@@ -40,3 +40,7 @@ backend.env
 # Ignored from repo
 inkwell-frontend/
 RUN_CONFIGURATION.md
+data/
+Blogging Platform Case Study - Java.pdf
+SDD.md
+SDD.pdf
