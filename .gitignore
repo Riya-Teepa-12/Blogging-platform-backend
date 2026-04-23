@@ -36,3 +36,7 @@ Thumbs.db
 *.env
 backend.env
 .backend-pids.json
+
+# Ignored from repo
+inkwell-frontend/
+RUN_CONFIGURATION.md
