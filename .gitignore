@@ -35,3 +35,4 @@ Thumbs.db
 # Environments
 *.env
 backend.env
+.backend-pids.json
