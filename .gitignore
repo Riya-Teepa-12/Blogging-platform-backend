@@ -31,3 +31,16 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Environments
+*.env
+backend.env
+.backend-pids.json
+
+# Ignored from repo
+inkwell-frontend/
+RUN_CONFIGURATION.md
+data/
+Blogging Platform Case Study - Java.pdf
+SDD.md
+SDD.pdf

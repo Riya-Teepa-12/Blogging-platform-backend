@@ -1,0 +1,31 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: comment-service
+  datasource:
+    url: ${COMMENT_DB_URL:jdbc:h2:file:./data/commentdb;MODE=MySQL;AUTO_SERVER=TRUE}
+    username: ${COMMENT_DB_USERNAME:sa}
+    password: ${COMMENT_DB_PASSWORD:}
+    driver-class-name: ${COMMENT_DB_DRIVER:org.h2.Driver}
+  jpa:
+    database-platform: ${COMMENT_JPA_DIALECT:org.hibernate.dialect.H2Dialect}
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    hostname: localhost
+    prefer-ip-address: false
+
+inkwell:
+  comment:
+    moderation-required: false

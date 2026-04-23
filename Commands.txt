@@ -1,0 +1,26 @@
+Swagger
+========
+http://localhost:8080/swagger-ui.html (for all services)
+
+http://localhost:8081/swagger-ui/index.html (For each service change port only)
+
+Sonarqube
+==========
+
+docker run -d -p 9000:9000 sonarqube (Run)
+
+mvn clean verify sonar:sonar "-Dsonar.host.url=http://localhost:9000" "-Dsonar.token=<token>" (Run from root directory)
+
+Kafka + ZooKeeper
+=================
+
+docker compose -f docker-compose.kafka.yml up -d
+
+docker compose -f docker-compose.kafka.yml down
+
+# Kafka consumer side-effects toggle
+# INKWELL_NOTIFICATION_KAFKA_APPLY_SIDE_EFFECTS=true
+
+Consume topic command
+============================
+docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic notification.dispatch.v1 --from-beginning
