@@ -1,0 +1,56 @@
+﻿[
+    {
+        "Name":  "service-registry",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\service-registry",
+        "Port":  8761,
+        "Pid":  21152
+    },
+    {
+        "Name":  "auth-service",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\Auth-service",
+        "Port":  8081,
+        "Pid":  24224
+    },
+    {
+        "Name":  "post-service",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\post-service",
+        "Port":  8082,
+        "Pid":  15344
+    },
+    {
+        "Name":  "comment-service",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\comment-service",
+        "Port":  8083,
+        "Pid":  23520
+    },
+    {
+        "Name":  "category-service",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\category-service",
+        "Port":  8084,
+        "Pid":  15924
+    },
+    {
+        "Name":  "media-service",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\media-service",
+        "Port":  8085,
+        "Pid":  23652
+    },
+    {
+        "Name":  "newsletter-service",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\newsletter-service",
+        "Port":  8086,
+        "Pid":  19276
+    },
+    {
+        "Name":  "notification-service",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\notification-service",
+        "Port":  8087,
+        "Pid":  22012
+    },
+    {
+        "Name":  "api-gateway",
+        "Dir":  "C:\\Users\\mishr\\Desktop\\Inkwell\\api-gateway",
+        "Port":  8080,
+        "Pid":  23312
+    }
+]

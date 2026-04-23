@@ -1,0 +1,27 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: newsletter-service
+  datasource:
+    url: ${NEWSLETTER_DB_URL:jdbc:h2:file:./data/newsletterdb;MODE=MySQL;AUTO_SERVER=TRUE}
+    username: ${NEWSLETTER_DB_USERNAME:sa}
+    password: ${NEWSLETTER_DB_PASSWORD:}
+    driver-class-name: ${NEWSLETTER_DB_DRIVER:org.h2.Driver}
+  jpa:
+    database-platform: ${NEWSLETTER_JPA_DIALECT:org.hibernate.dialect.H2Dialect}
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    hostname: localhost
+    prefer-ip-address: false

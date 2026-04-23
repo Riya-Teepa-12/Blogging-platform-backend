@@ -1,0 +1,27 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: post-service
+  datasource:
+    url: ${POST_DB_URL:jdbc:h2:file:./data/postdb;MODE=MySQL;AUTO_SERVER=TRUE}
+    username: ${POST_DB_USERNAME:sa}
+    password: ${POST_DB_PASSWORD:}
+    driver-class-name: ${POST_DB_DRIVER:org.h2.Driver}
+  jpa:
+    database-platform: ${POST_JPA_DIALECT:org.hibernate.dialect.H2Dialect}
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    hostname: localhost
+    prefer-ip-address: false
