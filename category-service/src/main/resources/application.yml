@@ -1,0 +1,27 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: category-service
+  datasource:
+    url: ${CATEGORY_DB_URL:jdbc:h2:file:./data/categorydb;MODE=MySQL;AUTO_SERVER=TRUE}
+    username: ${CATEGORY_DB_USERNAME:sa}
+    password: ${CATEGORY_DB_PASSWORD:}
+    driver-class-name: ${CATEGORY_DB_DRIVER:org.h2.Driver}
+  jpa:
+    database-platform: ${CATEGORY_JPA_DIALECT:org.hibernate.dialect.H2Dialect}
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    hostname: localhost
+    prefer-ip-address: false

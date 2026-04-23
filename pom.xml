@@ -1,0 +1,22 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.app</groupId>
+    <artifactId>inkwell-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>inkwell-parent</name>
+
+    <modules>
+        <module>service-registry</module>
+        <module>api-gateway</module>
+        <module>Auth-service</module>
+        <module>post-service</module>
+        <module>comment-service</module>
+        <module>category-service</module>
+        <module>media-service</module>
+        <module>newsletter-service</module>
+        <module>notification-service</module>
+    </modules>
+</project>
