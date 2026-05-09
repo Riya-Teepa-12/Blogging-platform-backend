@@ -12,6 +12,9 @@ public class PostCreateRequest {
     @NotNull
     private Long authorId;
 
+    @Size(max = 120)
+    private String authorName;
+
     @NotBlank
     @Size(min = 3, max = 180)
     private String title;

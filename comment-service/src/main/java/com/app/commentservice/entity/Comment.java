@@ -35,6 +35,9 @@ public class Comment {
     @Column(nullable = false)
     private Long authorId;
 
+    @Column(length = 120)
+    private String authorName;
+
     private Long parentCommentId;
 
     @Column(nullable = false, length = 5000)

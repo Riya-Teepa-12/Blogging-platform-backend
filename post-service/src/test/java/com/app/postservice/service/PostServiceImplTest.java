@@ -4,17 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -24,10 +22,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -60,16 +58,22 @@ class PostServiceImplTest {
     private ObjectProvider<StringRedisTemplate> redisTemplateProvider;
 
     @Mock
-    private RestTemplate restTemplate;
+    @SuppressWarnings("unused")
+    private ObjectProvider<KafkaTemplate<String, NotificationDispatchEvent>> notificationKafkaTemplateProvider;
 
     @Mock
-    private ObjectProvider<KafkaTemplate<String, NotificationDispatchEvent>> notificationKafkaTemplateProvider;
+    private KafkaTemplate<String, NotificationDispatchEvent> notificationKafkaTemplate;
+
+    @Mock
+    private RestTemplate restTemplate;
 
     @InjectMocks
     private PostServiceImpl postService;
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(postService, "redisTemplateProvider", redisTemplateProvider);
+        ReflectionTestUtils.setField(postService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
         ReflectionTestUtils.setField(postService, "newsletterServiceUrl", "http://newsletter");
         ReflectionTestUtils.setField(postService, "commentServiceUrl", "http://comment");
         ReflectionTestUtils.setField(postService, "authServiceUrl", "http://auth");
@@ -81,9 +85,8 @@ class PostServiceImplTest {
         ReflectionTestUtils.setField(postService, "restTemplate", restTemplate);
         ReflectionTestUtils.setField(postService, "notificationKafkaTopic", "notification.dispatch.v1");
         ReflectionTestUtils.setField(postService, "applicationName", "post-service");
-        ReflectionTestUtils.setField(postService, "redisTemplateProvider", redisTemplateProvider);
-        ReflectionTestUtils.setField(postService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
     }
+
     @Test
     void createPostBuildsResponseAndPersistsDraft() {
         PostCreateRequest request = new PostCreateRequest();
@@ -307,10 +310,10 @@ class PostServiceImplTest {
 
         assertThat((String) ReflectionTestUtils.invokeMethod(postService, "resolveAuthorName", " ", 7L))
                 .isEqualTo("User #7");
-        assertThat((Boolean) ReflectionTestUtils.invokeMethod(postService, "registerViewInMemory", 9L, "session-a"))
-                .isTrue();
-        assertThat((Boolean) ReflectionTestUtils.invokeMethod(postService, "registerViewInMemory", 9L, "session-a"))
-                .isFalse();
+        assertThat(List.of(
+                (Boolean) ReflectionTestUtils.invokeMethod(postService, "registerViewInMemory", 9L, "session-a"),
+                (Boolean) ReflectionTestUtils.invokeMethod(postService, "registerViewInMemory", 9L, "session-a")))
+                .containsExactly(true, false);
     }
 
     @Test
@@ -332,35 +335,105 @@ class PostServiceImplTest {
     }
 
     @Test
-    void createPublishedPostNotifiesSubscribersAndFollowers() {
+    void likePostDispatchesKafkaNotificationToPostAuthor() {
+        enableKafka();
+        Post post = basePost(30L);
+        post.setAuthorId(100L);
+        when(postRepository.findByPostId(30L)).thenReturn(Optional.of(post));
+        when(postLikeRepository.findByPostIdAndUserId(30L, 200L)).thenReturn(Optional.empty());
+
+        postService.likePost(30L, 200L);
+
+        org.mockito.ArgumentCaptor<String> keyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.ArgumentCaptor<NotificationDispatchEvent> eventCaptor =
+                org.mockito.ArgumentCaptor.forClass(NotificationDispatchEvent.class);
+        verify(notificationKafkaTemplate).send(anyString(), keyCaptor.capture(), eventCaptor.capture());
+        assertThat(keyCaptor.getValue()).isEqualTo("100");
+        assertThat(eventCaptor.getValue())
+                .extracting(
+                        NotificationDispatchEvent::getDispatchChannel,
+                        NotificationDispatchEvent::getRecipientId,
+                        NotificationDispatchEvent::getActorId,
+                        NotificationDispatchEvent::getType)
+                .containsExactly("IN_APP", 100L, 200L, "LIKE");
+    }
+
+    @Test
+    void createPublishedPostDispatchesFollowerNotificationsViaKafka() {
+        enableKafka();
         PostCreateRequest request = new PostCreateRequest();
-        request.setAuthorId(11L);
+        request.setAuthorId(10L);
         request.setAuthorName("Author");
-        request.setTitle("New Post");
+        request.setTitle("Fresh Post");
         request.setContent("content");
         request.setStatus(PostStatus.PUBLISHED);
-
-        when(postRepository.existsBySlug("new-post")).thenReturn(false);
+        when(postRepository.existsBySlug("fresh-post")).thenReturn(false);
         when(postRepository.save(any(Post.class))).thenAnswer(invocation -> {
             Post post = invocation.getArgument(0);
-            post.setPostId(200L);
+            post.setPostId(301L);
             post.setCreatedAt(LocalDateTime.now());
             post.setUpdatedAt(LocalDateTime.now());
             return post;
         });
-        when(authorFollowRepository.findByAuthorId(11L))
-                .thenReturn(List.of(AuthorFollow.builder().authorId(11L).followerId(22L).build()));
-        when(restTemplate.postForEntity(contains("/newsletter/send-post-notification"), any(), any(Class.class)))
-                .thenReturn(ResponseEntity.ok().build());
-
-        KafkaTemplate<String, NotificationDispatchEvent> kafkaTemplate = org.mockito.Mockito.mock(KafkaTemplate.class);
-        when(notificationKafkaTemplateProvider.getIfAvailable()).thenReturn(kafkaTemplate);
-        when(kafkaTemplate.send(anyString(), anyString(), any(NotificationDispatchEvent.class)))
-                .thenReturn(CompletableFuture.completedFuture(null));
+        when(authorFollowRepository.findByAuthorId(10L)).thenReturn(List.of(
+                AuthorFollow.builder().authorId(10L).followerId(10L).build(),
+                AuthorFollow.builder().authorId(10L).followerId(11L).build(),
+                AuthorFollow.builder().authorId(10L).followerId(12L).build(),
+                AuthorFollow.builder().authorId(10L).followerId(11L).build()));
 
         postService.createPost(request, "ADMIN");
 
-        verify(restTemplate).postForEntity(contains("/newsletter/send-post-notification"), any(), any(Class.class));
-        verify(kafkaTemplate, atLeast(2)).send(anyString(), anyString(), any(NotificationDispatchEvent.class));
+        org.mockito.ArgumentCaptor<NotificationDispatchEvent> eventCaptor =
+                org.mockito.ArgumentCaptor.forClass(NotificationDispatchEvent.class);
+        verify(notificationKafkaTemplate, times(3)).send(anyString(), anyString(), eventCaptor.capture());
+        List<NotificationDispatchEvent> events = new ArrayList<>(eventCaptor.getAllValues());
+        assertThat(events)
+                .extracting(NotificationDispatchEvent::getDispatchChannel)
+                .containsExactlyInAnyOrder("IN_APP", "EMAIL", "EMAIL");
+        NotificationDispatchEvent inApp = events.stream()
+                .filter(event -> "IN_APP".equals(event.getDispatchChannel()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(inApp.getRecipientIds()).containsExactly(11L, 12L);
+    }
+
+    @Test
+    void publishNotificationEventUsesRecipientListKeyAndRandomFallback() {
+        enableKafka();
+        NotificationDispatchEvent bulkEvent = NotificationDispatchEvent.builder()
+                .recipientIds(List.of(41L, 42L))
+                .build();
+
+        ReflectionTestUtils.invokeMethod(postService, "publishNotificationEvent", bulkEvent);
+
+        org.mockito.ArgumentCaptor<String> keyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(notificationKafkaTemplate).send(anyString(), keyCaptor.capture(), any(NotificationDispatchEvent.class));
+        assertThat(keyCaptor.getValue()).isEqualTo("41");
+
+        NotificationDispatchEvent anonymousEvent = NotificationDispatchEvent.builder().build();
+        ReflectionTestUtils.invokeMethod(postService, "publishNotificationEvent", anonymousEvent);
+        verify(notificationKafkaTemplate, times(2)).send(anyString(), keyCaptor.capture(), any(NotificationDispatchEvent.class));
+        assertThat(keyCaptor.getAllValues().get(1)).isNotBlank();
+    }
+
+    @Test
+    void publishNotificationEventReturnsWhenKafkaProviderUnavailable() {
+        ReflectionTestUtils.setField(postService, "notificationKafkaTemplateProvider", null);
+        NotificationDispatchEvent event = NotificationDispatchEvent.builder().recipientId(1L).build();
+
+        ReflectionTestUtils.invokeMethod(postService, "publishNotificationEvent", event);
+
+        verify(notificationKafkaTemplate, never()).send(anyString(), anyString(), any(NotificationDispatchEvent.class));
+    }
+
+    private void enableKafka() {
+        ReflectionTestUtils.setField(postService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
+        when(notificationKafkaTemplateProvider.getIfAvailable()).thenReturn(notificationKafkaTemplate);
+        org.mockito.Mockito.doReturn(java.util.concurrent.CompletableFuture.completedFuture(null))
+                .when(notificationKafkaTemplate)
+                .send(org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.any(NotificationDispatchEvent.class));
     }
 }
+

@@ -17,6 +17,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     List<Post> findByAuthorId(Long authorId);
 
+    List<Post> findByAuthorIdAndStatusOrderByPublishedAtDesc(Long authorId, PostStatus status);
+
     List<Post> findByStatus(PostStatus status);
 
     Optional<Post> findByPostId(Long postId);
@@ -28,6 +30,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Query("select p from Post p where p.status='PUBLISHED' order by p.featured desc, p.publishedAt desc")
     List<Post> findPublishedOrderByPublishedAtDesc();
+
+    List<Post> findAllByOrderByUpdatedAtDesc();
+
+    List<Post> findAllByOrderByViewCountDescPublishedAtDesc();
 
     long countByAuthorId(Long authorId);
 

@@ -15,6 +15,7 @@ public interface CategoryService {
     CategoryResponse updateCategory(Long categoryId, CategoryRequest request);
     void deleteCategory(Long categoryId);
     TagResponse createTag(TagRequest request);
+    TagResponse updateTag(Long tagId, TagRequest request);
     TagResponse getTagBySlug(String slug);
     List<TagResponse> getAllTags();
     void deleteTag(Long tagId);

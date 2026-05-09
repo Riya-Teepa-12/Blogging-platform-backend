@@ -13,6 +13,9 @@ public class CommentCreateRequest {
     @NotNull
     private Long authorId;
 
+    @Size(max = 120)
+    private String authorName;
+
     private Long parentCommentId;
 
     @NotBlank

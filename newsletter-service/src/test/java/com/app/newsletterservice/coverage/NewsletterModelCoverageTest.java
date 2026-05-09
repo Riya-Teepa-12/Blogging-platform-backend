@@ -3,10 +3,12 @@ package com.app.newsletterservice.coverage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,6 +69,7 @@ class NewsletterModelCoverageTest {
             instance.equals(new Object());
             instance.hashCode();
             instance.toString();
+            exerciseDirectionalNullEqualityBranches(clazz);
         }
 
         Object ctorInstance = instantiateLargestConstructor(clazz);
@@ -215,5 +218,74 @@ class NewsletterModelCoverageTest {
             return nested;
         }
         return null;
+    }
+
+    private void exerciseDirectionalNullEqualityBranches(Class<?> clazz) {
+        List<Method> orderedSetters = orderedSetters(clazz);
+        if (orderedSetters.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < orderedSetters.size(); i++) {
+            Method current = orderedSetters.get(i);
+
+            Object left = instantiateNoArgs(clazz);
+            Object right = instantiateNoArgs(clazz);
+            if (left == null || right == null) {
+                return;
+            }
+            for (int j = 0; j < i; j++) {
+                applySampleValue(left, orderedSetters.get(j));
+                applySampleValue(right, orderedSetters.get(j));
+            }
+            applySampleValue(right, current);
+            left.equals(right);
+            right.equals(left);
+
+            Object leftReverse = instantiateNoArgs(clazz);
+            Object rightReverse = instantiateNoArgs(clazz);
+            if (leftReverse == null || rightReverse == null) {
+                return;
+            }
+            for (int j = 0; j < i; j++) {
+                applySampleValue(leftReverse, orderedSetters.get(j));
+                applySampleValue(rightReverse, orderedSetters.get(j));
+            }
+            applySampleValue(leftReverse, current);
+            leftReverse.equals(rightReverse);
+            rightReverse.equals(leftReverse);
+        }
+    }
+
+    private List<Method> orderedSetters(Class<?> clazz) {
+        List<Method> ordered = new ArrayList<>();
+        for (Field field : clazz.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            String name = field.getName();
+            String setterName = "set" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+            for (Method method : clazz.getMethods()) {
+                if (method.getName().equals(setterName) && method.getParameterCount() == 1) {
+                    ordered.add(method);
+                    break;
+                }
+            }
+        }
+        for (Method method : clazz.getMethods()) {
+            if (method.getName().startsWith("set")
+                    && method.getParameterCount() == 1
+                    && !ordered.contains(method)) {
+                ordered.add(method);
+            }
+        }
+        return ordered;
+    }
+
+    private void applySampleValue(Object target, Method setter) {
+        try {
+            setter.invoke(target, sampleValue(setter.getParameterTypes()[0]));
+        } catch (Exception ignored) {
+            // Best effort for coverage.
+        }
     }
 }

@@ -5,6 +5,7 @@ import com.app.authservice.entity.AuthProvider;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -15,6 +16,7 @@ public class OAuthLoginRequest {
 
     @NotBlank
     @Email
+    @Pattern(regexp = ValidationPatterns.EMAIL_REGEX, message = "must be a valid email address")
     private String email;
 
     @NotBlank

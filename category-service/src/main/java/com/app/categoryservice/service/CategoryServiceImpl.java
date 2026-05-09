@@ -94,6 +94,19 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional
+    public TagResponse updateTag(Long tagId, TagRequest request) {
+        Tag tag = findTag(tagId);
+        String nextName = request.getName().trim();
+        if (!tag.getName().equalsIgnoreCase(nextName)) {
+            tag.setName(nextName);
+            tag.setSlug(generateUniqueSlug(nextName));
+        }
+        tag = tagRepository.save(tag);
+        return toTagResponse(tag);
+    }
+
+    @Override
     public TagResponse getTagBySlug(String slug) {
         return toTagResponse(findTagBySlug(slug));
     }

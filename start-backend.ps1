@@ -1,5 +1,19 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$envFile = Join-Path $root "backend.env"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        $line = $_.Trim()
+        if ($line -ne "" -and -not $line.StartsWith("#")) {
+            $parts = $line.Split("=", 2)
+            if ($parts.Count -eq 2) {
+                $key = $parts[0].Trim()
+                $value = $parts[1].Trim()
+                [Environment]::SetEnvironmentVariable($key, $value, "Process")
+            }
+        }
+    }
+}
 $services = @(
     @{ Name = "service-registry"; Dir = "service-registry"; Port = 8761 },
     @{ Name = "auth-service"; Dir = "Auth-service"; Port = 8081 },
@@ -12,13 +26,16 @@ $services = @(
     @{ Name = "api-gateway"; Dir = "api-gateway"; Port = 8080 }
 )
 
+$logDir = Join-Path $root "log"
+if (!(Test-Path $logDir)) {
+    New-Item -ItemType Directory -Path $logDir | Out-Null
+}
+# Force a single absolute log location for Spring Boot logging.file.name across all services.
+[Environment]::SetEnvironmentVariable("INKWELL_LOG_DIR", $logDir, "Process")
+
 $pids = @()
 foreach ($service in $services) {
     $workingDirectory = Join-Path $root $service.Dir
-    $logDir = Join-Path $root "logs"
-    if (!(Test-Path $logDir)) {
-        New-Item -ItemType Directory -Path $logDir | Out-Null
-    }
     $outLog = Join-Path $logDir "$($service.Name).out.log"
     $errLog = Join-Path $logDir "$($service.Name).err.log"
     $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c mvnw.cmd -q -DskipTests spring-boot:run" -WorkingDirectory $workingDirectory -PassThru -RedirectStandardOutput $outLog -RedirectStandardError $errLog

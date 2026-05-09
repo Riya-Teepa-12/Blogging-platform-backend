@@ -2,6 +2,7 @@ package com.app.commentservice.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -20,7 +21,11 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findTopLevelByPostId(@Param("postId") Long postId);
     long countByPostId(Long postId);
     List<Comment> findByStatus(CommentStatus status);
+    void deleteByPostId(Long postId);
     void deleteByCommentId(Long commentId);
+    void deleteByCommentIdIn(Collection<Long> commentIds);
+    long countByPostIdAndStatusNot(Long postId, CommentStatus status);
+    long countByStatusNot(CommentStatus status);
 
     @Modifying
     @Query("update Comment c set c.likesCount = c.likesCount + 1 where c.commentId = :commentId")

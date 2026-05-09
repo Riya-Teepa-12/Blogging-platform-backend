@@ -12,6 +12,7 @@ import lombok.Data;
 public class PostResponse {
     private Long postId;
     private Long authorId;
+    private String authorName;
     private String title;
     private String slug;
     private String content;

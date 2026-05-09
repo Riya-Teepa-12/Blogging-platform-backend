@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -51,6 +53,7 @@ import com.app.authservice.repository.AuditLogRepository;
 import com.app.authservice.repository.AuthorUpgradeRequestRepository;
 import com.app.authservice.repository.EmailOtpRepository;
 import com.app.authservice.repository.UserRepository;
+import com.app.authservice.messaging.NotificationDispatchEvent;
 import com.app.authservice.security.JwtUtil;
 
 @ExtendWith(MockitoExtension.class)
@@ -77,15 +80,25 @@ class AuthServiceImplTest {
     @Mock
     private JavaMailSender mailSender;
 
+    @Mock
+    @SuppressWarnings("unused")
+    private ObjectProvider<KafkaTemplate<String, NotificationDispatchEvent>> notificationKafkaTemplateProvider;
+
+    @Mock
+    private KafkaTemplate<String, NotificationDispatchEvent> notificationKafkaTemplate;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
     @BeforeEach
     void setUp() {
         SecurityContextHolder.clearContext();
+        ReflectionTestUtils.setField(authService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
         ReflectionTestUtils.setField(authService, "mailFrom", "auth@inkwell.com");
         ReflectionTestUtils.setField(authService, "otpExpireMinutes", 10L);
         ReflectionTestUtils.setField(authService, "otpMaxAttempts", 5);
+        ReflectionTestUtils.setField(authService, "notificationKafkaTopic", "notification.dispatch.v1");
+        ReflectionTestUtils.setField(authService, "applicationName", "auth-service");
     }
 
     @Test
@@ -339,6 +352,57 @@ class AuthServiceImplTest {
         when(userRepository.findAllByRole(Role.ADMIN)).thenReturn(List.of());
 
         assertThat(authService.becomeAuthor("reader@example.com", request).getRequestId()).isEqualTo(51L);
+    }
+
+    @Test
+    void becomeAuthorNotifiesActiveAdminsThroughKafka() {
+        ReflectionTestUtils.setField(authService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
+        when(notificationKafkaTemplateProvider.getIfAvailable()).thenReturn(notificationKafkaTemplate);
+        org.mockito.Mockito.doReturn(java.util.concurrent.CompletableFuture.completedFuture(null))
+                .when(notificationKafkaTemplate)
+                .send(org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.any(NotificationDispatchEvent.class));
+
+        User reader = User.builder()
+                .userId(8L)
+                .username("reader")
+                .fullName("Reader")
+                .email("reader@example.com")
+                .role(Role.READER)
+                .isActive(true)
+                .build();
+        User activeAdmin = User.builder().userId(501L).role(Role.ADMIN).isActive(true).fullName("Admin").build();
+        User inactiveAdmin = User.builder().userId(502L).role(Role.ADMIN).isActive(false).fullName("Sleep").build();
+        User noIdAdmin = User.builder().userId(null).role(Role.ADMIN).isActive(true).fullName("NoId").build();
+
+        BecomeAuthorRequest request = new BecomeAuthorRequest();
+        request.setBio("bio bio bio");
+        request.setMotivation("motivation motivation");
+        request.setExpertiseCategories(List.of("Java"));
+        request.setWritingSampleUrls(List.of("https://example.com/sample"));
+        AuthorUpgradeRequest saved = AuthorUpgradeRequest.builder()
+                .requestId(61L)
+                .userId(8L)
+                .username("reader")
+                .fullName("Reader")
+                .email("reader@example.com")
+                .bio("bio")
+                .motivation("motivation")
+                .expertiseCategories("Java")
+                .writingSampleUrls("https://example.com/sample")
+                .status(AuthorUpgradeStatus.PENDING)
+                .build();
+
+        when(userRepository.findByEmail("reader@example.com")).thenReturn(java.util.Optional.of(reader));
+        when(authorUpgradeRequestRepository.existsByUserIdAndStatus(8L, AuthorUpgradeStatus.PENDING)).thenReturn(false);
+        when(authorUpgradeRequestRepository.save(any(AuthorUpgradeRequest.class))).thenReturn(saved);
+        when(userRepository.findAllByRole(Role.ADMIN)).thenReturn(List.of(activeAdmin, inactiveAdmin, noIdAdmin));
+
+        authService.becomeAuthor("reader@example.com", request);
+
+        verify(notificationKafkaTemplate, times(2))
+                .send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
     }
 
     @Test
@@ -671,6 +735,26 @@ class AuthServiceImplTest {
         assertThatThrownBy(() -> authService.becomeAuthor("reader2@example.com", request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("expertise category");
+    }
+
+    @Test
+    void publishNotificationEventHandlesNullRecipientAndMissingProvider() {
+        ReflectionTestUtils.setField(authService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
+        when(notificationKafkaTemplateProvider.getIfAvailable()).thenReturn(notificationKafkaTemplate);
+        org.mockito.Mockito.doReturn(java.util.concurrent.CompletableFuture.completedFuture(null))
+                .when(notificationKafkaTemplate)
+                .send(org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.any(NotificationDispatchEvent.class));
+
+        NotificationDispatchEvent event = NotificationDispatchEvent.builder().recipientId(null).build();
+        ReflectionTestUtils.invokeMethod(authService, "publishNotificationEvent", event);
+        verify(notificationKafkaTemplate).send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
+
+        ReflectionTestUtils.setField(authService, "notificationKafkaTemplateProvider", null);
+        ReflectionTestUtils.invokeMethod(authService, "publishNotificationEvent", event);
+        verify(notificationKafkaTemplate, times(1))
+                .send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
     }
 
     private LoginRequest loginRequest() {
