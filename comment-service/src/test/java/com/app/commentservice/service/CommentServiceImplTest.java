@@ -15,7 +15,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
@@ -27,6 +29,7 @@ import com.app.commentservice.entity.AppUser;
 import com.app.commentservice.entity.Comment;
 import com.app.commentservice.entity.CommentLike;
 import com.app.commentservice.entity.CommentStatus;
+import com.app.commentservice.messaging.NotificationDispatchEvent;
 import com.app.commentservice.repository.AppUserRepository;
 import com.app.commentservice.repository.CommentLikeRepository;
 import com.app.commentservice.repository.CommentRepository;
@@ -46,15 +49,25 @@ class CommentServiceImplTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    @SuppressWarnings("unused")
+    private ObjectProvider<KafkaTemplate<String, NotificationDispatchEvent>> notificationKafkaTemplateProvider;
+
+    @Mock
+    private KafkaTemplate<String, NotificationDispatchEvent> notificationKafkaTemplate;
+
     @InjectMocks
     private CommentServiceImpl commentService;
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(commentService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
         ReflectionTestUtils.setField(commentService, "moderationRequired", true);
         ReflectionTestUtils.setField(commentService, "postServiceUrl", "http://post");
         ReflectionTestUtils.setField(commentService, "moderationModeInitialized", false);
         ReflectionTestUtils.setField(commentService, "restTemplate", restTemplate);
+        ReflectionTestUtils.setField(commentService, "notificationKafkaTopic", "notification.dispatch.v1");
+        ReflectionTestUtils.setField(commentService, "applicationName", "comment-service");
     }
 
     @Test
@@ -236,6 +249,7 @@ class CommentServiceImplTest {
 
     @Test
     void addCommentApprovedDispatchesReplyMentionAndPostAuthorPaths() {
+        enableKafka();
         ReflectionTestUtils.setField(commentService, "moderationRequired", false);
         ReflectionTestUtils.setField(commentService, "moderationModeInitialized", false);
 
@@ -277,6 +291,31 @@ class CommentServiceImplTest {
         request.setContent("Hi @john thanks");
 
         assertThat(commentService.addComment(request).getStatus()).isEqualTo(CommentStatus.APPROVED);
+        verify(notificationKafkaTemplate, org.mockito.Mockito.atLeast(3))
+                .send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
+    }
+
+    @Test
+    void publishNotificationEventHandlesKeyAndUnavailableProviderBranches() {
+        enableKafka();
+        NotificationDispatchEvent event = NotificationDispatchEvent.builder().recipientId(77L).build();
+        ReflectionTestUtils.invokeMethod(commentService, "publishNotificationEvent", event);
+        verify(notificationKafkaTemplate).send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
+
+        ReflectionTestUtils.setField(commentService, "notificationKafkaTemplateProvider", null);
+        ReflectionTestUtils.invokeMethod(commentService, "publishNotificationEvent", event);
+        verify(notificationKafkaTemplate, org.mockito.Mockito.times(1))
+                .send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
+    }
+
+    private void enableKafka() {
+        ReflectionTestUtils.setField(commentService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
+        when(notificationKafkaTemplateProvider.getIfAvailable()).thenReturn(notificationKafkaTemplate);
+        org.mockito.Mockito.doReturn(java.util.concurrent.CompletableFuture.completedFuture(null))
+                .when(notificationKafkaTemplate)
+                .send(org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.any(NotificationDispatchEvent.class));
     }
 
     private Object buildPostAuthor(Long authorId) {
@@ -306,4 +345,3 @@ class CommentServiceImplTest {
         }
     }
 }
-

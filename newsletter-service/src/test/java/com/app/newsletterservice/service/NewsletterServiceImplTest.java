@@ -16,7 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -30,6 +32,7 @@ import com.app.newsletterservice.dto.SubscribeRequest;
 import com.app.newsletterservice.dto.UpdatePreferencesRequest;
 import com.app.newsletterservice.entity.Subscriber;
 import com.app.newsletterservice.entity.SubscriberStatus;
+import com.app.newsletterservice.messaging.NotificationDispatchEvent;
 import com.app.newsletterservice.repository.SubscriberRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,17 +47,27 @@ class NewsletterServiceImplTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    @SuppressWarnings("unused")
+    private ObjectProvider<KafkaTemplate<String, NotificationDispatchEvent>> notificationKafkaTemplateProvider;
+
+    @Mock
+    private KafkaTemplate<String, NotificationDispatchEvent> notificationKafkaTemplate;
+
     @InjectMocks
     private NewsletterServiceImpl newsletterService;
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(newsletterService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
         ReflectionTestUtils.setField(newsletterService, "mailFrom", "news@inkwell.com");
         ReflectionTestUtils.setField(newsletterService, "frontendUrl", "http://frontend");
         ReflectionTestUtils.setField(newsletterService, "newsletterPublicBaseUrl", "http://newsletter");
         ReflectionTestUtils.setField(newsletterService, "authServiceUrl", "http://auth");
         ReflectionTestUtils.setField(newsletterService, "internalApiKey", "secret");
         ReflectionTestUtils.setField(newsletterService, "restTemplate", restTemplate);
+        ReflectionTestUtils.setField(newsletterService, "notificationKafkaTopic", "notification.dispatch.v1");
+        ReflectionTestUtils.setField(newsletterService, "applicationName", "newsletter-service");
     }
 
     @Test
@@ -154,6 +167,7 @@ class NewsletterServiceImplTest {
 
     @Test
     void sendNewsletterAndPostNotificationDispatchToEligibleSubscribers() {
+        enableKafka();
         Subscriber active = Subscriber.builder()
                 .subscriberId(11L)
                 .email("a@example.com")
@@ -188,6 +202,7 @@ class NewsletterServiceImplTest {
         assertThat(sent.getRecipients()).isEqualTo(1L);
         assertThat(postSent.getRecipients()).isEqualTo(1L);
         verify(mailSender, times(2)).send(any(SimpleMailMessage.class));
+        verify(notificationKafkaTemplate, times(2)).send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
     }
 
     @Test
@@ -214,6 +229,44 @@ class NewsletterServiceImplTest {
         Subscriber noName = Subscriber.builder().email("noname@example.com").fullName(" ").build();
         assertThat((String) ReflectionTestUtils.invokeMethod(newsletterService, "displayName", noName))
                 .isEqualTo("noname@example.com");
+    }
+
+    @Test
+    void inAppNotificationSkipsNullUserAndHandlesUnavailableKafkaProvider() {
+        Subscriber withoutUser = Subscriber.builder().subscriberId(5L).userId(null).build();
+        ReflectionTestUtils.invokeMethod(
+                newsletterService,
+                "sendInAppNotification",
+                withoutUser,
+                "ADMIN_BROADCAST",
+                "title",
+                "message",
+                1L,
+                "NEWSLETTER");
+        verify(notificationKafkaTemplate, times(0)).send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
+
+        Subscriber withUser = Subscriber.builder().subscriberId(6L).userId(99L).build();
+        ReflectionTestUtils.setField(newsletterService, "notificationKafkaTemplateProvider", null);
+        ReflectionTestUtils.invokeMethod(
+                newsletterService,
+                "sendInAppNotification",
+                withUser,
+                "ADMIN_BROADCAST",
+                "title",
+                "message",
+                1L,
+                "NEWSLETTER");
+        verify(notificationKafkaTemplate, times(0)).send(any(String.class), any(String.class), any(NotificationDispatchEvent.class));
+    }
+
+    private void enableKafka() {
+        ReflectionTestUtils.setField(newsletterService, "notificationKafkaTemplateProvider", notificationKafkaTemplateProvider);
+        when(notificationKafkaTemplateProvider.getIfAvailable()).thenReturn(notificationKafkaTemplate);
+        org.mockito.Mockito.doReturn(java.util.concurrent.CompletableFuture.completedFuture(null))
+                .when(notificationKafkaTemplate)
+                .send(org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.nullable(String.class),
+                        org.mockito.ArgumentMatchers.any(NotificationDispatchEvent.class));
     }
 
     private Object buildEntitlement(boolean admin, boolean newsletterEntitled) {
