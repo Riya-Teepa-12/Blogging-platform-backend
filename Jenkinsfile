@@ -18,55 +18,36 @@ pipeline {
       }
     }
 
-    stage('Build') {
-      steps {
-        sh 'mvn -B -DskipTests clean package'
+    stage('Build + Test + SonarCloud') {
+      agent {
+        docker {
+          image 'maven:3.9.8-eclipse-temurin-17'
+          reuseNode true
+        }
       }
-    }
-
-    stage('Test') {
-      steps {
-        sh 'mvn -B test'
-      }
-    }
-
-    stage('SonarCloud Scan') {
       steps {
         withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
           sh '''
-            mvn -B sonar:sonar \
+            mvn -B clean verify sonar:sonar \
+              -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.projectKey=$SONAR_PROJECT_KEY \
               -Dsonar.organization=$SONAR_ORG \
-              -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.token=$SONAR_TOKEN
+              -Dsonar.token=$SONAR_TOKEN \
+              -Dsonar.qualitygate.wait=true \
+              -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml \
+              -Dsonar.coverage.exclusions=**/dto/**,**/entity/**
           '''
         }
-      }
-    }
-
-    stage('Deploy (Docker Compose)') {
-      when {
-        branch 'main'
-      }
-      steps {
-        sh '''
-          docker compose --env-file .env.aws up -d mysql redis zookeeper kafka service-registry
-          docker compose --env-file .env.aws up -d auth-service category-service comment-service media-service newsletter-service notification-service post-service
-          docker compose --env-file .env.aws up -d api-gateway
-        '''
       }
     }
   }
 
   post {
-    always {
-      sh 'docker compose --env-file .env.aws ps || true'
-    }
     failure {
       echo 'Build failed. Check console logs.'
     }
     success {
-      echo 'Build and deploy completed.'
+      echo 'Build, test, and SonarCloud scan completed.'
     }
   }
 }
