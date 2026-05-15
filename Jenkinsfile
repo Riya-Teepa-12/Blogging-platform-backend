@@ -1,6 +1,10 @@
 pipeline {
   agent any
 
+  tools {
+    maven 'maven3'
+  }
+
   environment {
     SONAR_PROJECT_KEY = 'riya-teepa-12_blogging-platform-backend'
     SONAR_ORG = 'riya-teepa-12'
@@ -19,12 +23,6 @@ pipeline {
     }
 
     stage('Build + Test + SonarCloud') {
-      agent {
-        docker {
-          image 'maven:3.9.8-eclipse-temurin-17'
-          reuseNode true
-        }
-      }
       steps {
         withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
           sh '''
