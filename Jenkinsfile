@@ -1,11 +1,6 @@
 pipeline {
   agent any
 
-  tools {
-    jdk 'jdk17'
-    maven 'maven3'
-  }
-
   environment {
     SONAR_PROJECT_KEY = 'riya-teepa-12_blogging-platform-backend'
     SONAR_ORG = 'riya-teepa-12'
