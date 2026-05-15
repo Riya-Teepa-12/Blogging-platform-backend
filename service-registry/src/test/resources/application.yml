@@ -17,7 +17,6 @@ springdoc:
     path: /swagger-ui.html
 
 logging:
-  config: classpath:logback-test.xml
   level:
     com.app.serviceregistry: INFO
   file:
