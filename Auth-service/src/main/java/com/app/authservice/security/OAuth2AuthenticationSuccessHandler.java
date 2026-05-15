@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -36,7 +37,7 @@ import lombok.RequiredArgsConstructor;
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
     private final AuthService authService;
-    private final OAuth2AuthorizedClientService authorizedClientService;
+    private final ObjectProvider<OAuth2AuthorizedClientService> authorizedClientServiceProvider;
 
     @Value("${inkwell.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -153,11 +154,15 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
     private String fetchGithubEmail(OAuth2AuthenticationToken oauthToken) {
         try {
-            OAuth2AuthorizedClient client =
-                    authorizedClientService.loadAuthorizedClient(
-                            oauthToken.getAuthorizedClientRegistrationId(),
-                            oauthToken.getName()
-                    );
+            OAuth2AuthorizedClientService authorizedClientService = authorizedClientServiceProvider.getIfAvailable();
+if (authorizedClientService == null) {
+    return null;
+}
+OAuth2AuthorizedClient client =
+        authorizedClientService.loadAuthorizedClient(
+                oauthToken.getAuthorizedClientRegistrationId(),
+                oauthToken.getName()
+        );
             if (client == null || client.getAccessToken() == null || client.getAccessToken().getTokenValue() == null) {
                 return null;
             }

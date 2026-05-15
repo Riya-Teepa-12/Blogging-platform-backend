@@ -128,6 +128,10 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION}
+      INKWELL_LOG_CONFIG: ${INKWELL_LOG_CONFIG}
+      INKWELL_LOG_DIR: ${INKWELL_LOG_DIR}
+      EUREKA_INSTANCE_HOSTNAME: auth-service
+      OAUTH_REDIRECT_BASE_URL: ${OAUTH_REDIRECT_BASE_URL}
 
   post-service:
     build:
@@ -141,7 +145,9 @@ services:
         condition: service_started
     ports:
       - "8082:8082"
-    environment: *common_env
+    environment:
+      <<: *common_env
+      EUREKA_INSTANCE_HOSTNAME: post-service
 
   comment-service:
     build:
@@ -155,7 +161,9 @@ services:
         condition: service_started
     ports:
       - "8083:8083"
-    environment: *common_env
+    environment:
+      <<: *common_env
+      EUREKA_INSTANCE_HOSTNAME: comment-service
 
   category-service:
     build:
@@ -169,7 +177,9 @@ services:
         condition: service_started
     ports:
       - "8084:8084"
-    environment: *common_env
+    environment:
+      <<: *common_env
+      EUREKA_INSTANCE_HOSTNAME: category-service
 
   media-service:
     build:
@@ -183,7 +193,9 @@ services:
         condition: service_started
     ports:
       - "8085:8085"
-    environment: *common_env
+    environment:
+      <<: *common_env
+      EUREKA_INSTANCE_HOSTNAME: media-service
 
   newsletter-service:
     build:
@@ -197,7 +209,9 @@ services:
         condition: service_started
     ports:
       - "8086:8086"
-    environment: *common_env
+    environment:
+      <<: *common_env
+      EUREKA_INSTANCE_HOSTNAME: newsletter-service
 
   notification-service:
     build:
@@ -213,6 +227,7 @@ services:
       - "8087:8087"
     environment:
       <<: *common_env
+      EUREKA_INSTANCE_HOSTNAME: notification-service
       SPRING_KAFKA_CONSUMER_GROUP_ID: notification-service-shadow
 
   api-gateway:

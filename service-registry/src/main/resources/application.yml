@@ -17,7 +17,7 @@ springdoc:
     path: /swagger-ui.html
 
 logging:
-  config: "${INKWELL_LOG_CONFIG:file:D:/Inkwell/common-logback-spring.xml}"
+  config: "${INKWELL_LOG_CONFIG:}"
   file:
     name: ${INKWELL_LOG_DIR:log}/service-registry.app.log
   level:

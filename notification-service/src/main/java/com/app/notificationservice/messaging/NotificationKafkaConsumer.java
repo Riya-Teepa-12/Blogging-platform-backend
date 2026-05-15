@@ -26,7 +26,8 @@ public class NotificationKafkaConsumer {
     @Value("${inkwell.notification.kafka.consumer.apply-side-effects:false}")
     private boolean applySideEffects;
 
-    @KafkaListener(topics = "${inkwell.notification.kafka.topic:notification.dispatch.v1}")
+    @KafkaListener(topics = "${inkwell.notification.kafka.topic:notification.dispatch.v1}",
+		   groupId = "${INKWELL_NOTIFICATION_KAFKA_GROUP_ID:notification-service-shadow}")
     public void consume(NotificationDispatchEvent event) {
         if (event == null) {
             return;

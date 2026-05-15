@@ -20,11 +20,12 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: openid,profile,email
+            redirect-uri: "${OAUTH_REDIRECT_BASE_URL:http://localhost:8080}/auth/login/oauth2/code/{registrationId}"
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
             scope: read:user,user:email
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri: "${OAUTH_REDIRECT_BASE_URL:http://localhost:8080}/auth/login/oauth2/code/{registrationId}"
   datasource:
     url: ${AUTH_DB_URL:${INKWELL_DB_URL:jdbc:mysql://localhost:3306/inkwell_platform?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}}
     username: ${AUTH_DB_USERNAME:${INKWELL_DB_USERNAME:root}}

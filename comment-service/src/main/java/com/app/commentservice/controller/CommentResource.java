@@ -57,12 +57,12 @@ public class CommentResource {
         return commentService.getAllComments(status);
     }
 
-    @GetMapping("/{commentId}")
+    @GetMapping("/{commentId:\\d+}")
     public CommentResponse getCommentById(@PathVariable Long commentId) {
         return commentService.getCommentById(commentId);
     }
 
-    @GetMapping("/{commentId}/replies")
+    @GetMapping("/{commentId:\\d+}/replies")
     public List<CommentResponse> getReplies(@PathVariable Long commentId) {
         return commentService.getReplies(commentId);
     }

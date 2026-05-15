@@ -53,8 +53,6 @@ public class SecurityConfig {
                 .successHandler(oauth2AuthenticationSuccessHandler)
                 .failureHandler(oauth2AuthenticationFailureHandler));
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        http.httpBasic(Customizer.withDefaults());
         return http.build();
     }
-
 }

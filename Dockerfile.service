@@ -2,7 +2,7 @@ FROM maven:3.9.9-eclipse-temurin-17 AS builder
 ARG SERVICE_DIR
 WORKDIR /build
 COPY . .
-RUN mvn -q -DskipTests -pl ${SERVICE_DIR} -am package
+RUN mvn -q -Dmaven.test.skip=true -pl ${SERVICE_DIR} -am package
 RUN JAR_PATH=$(find ${SERVICE_DIR}/target -maxdepth 1 -type f -name "*.jar" ! -name "original-*.jar" | head -n 1) && \
     cp "${JAR_PATH}" /build/app.jar
 

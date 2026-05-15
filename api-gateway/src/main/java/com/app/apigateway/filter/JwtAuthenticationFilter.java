@@ -48,6 +48,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/media/v3/api-docs",
             "/newsletter/v3/api-docs",
             "/notifications/v3/api-docs",
+	    "/auth/oauth2/",
+	    "auth/login/oauth2/",
             "/webjars",
             "/actuator");
 
