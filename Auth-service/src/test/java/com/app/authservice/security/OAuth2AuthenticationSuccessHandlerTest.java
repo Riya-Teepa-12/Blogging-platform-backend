@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,11 +29,14 @@ class OAuth2AuthenticationSuccessHandlerTest {
 
     @Mock
     private OAuth2AuthorizedClientService authorizedClientService;
+    private ObjectProvider<OAuth2AuthorizedClientService> authorizedClientServiceProvider;
 
     @Test
     void redirectsToFrontendCallbackOnSuccess() throws Exception {
+	authorizedClientServiceProvider =
+        new DefaultListableBeanFactory().getBeanProvider(OAuth2AuthorizedClientService.class);
         OAuth2AuthenticationSuccessHandler handler =
-                new OAuth2AuthenticationSuccessHandler(authService, authorizedClientService);
+                new OAuth2AuthenticationSuccessHandler(authService, authorizedClientServiceProvider);
         ReflectionTestUtils.setField(handler, "frontendUrl", "http://localhost:5173/");
 
         OAuth2AuthenticationToken authentication = org.mockito.Mockito.mock(OAuth2AuthenticationToken.class);
@@ -53,8 +58,10 @@ class OAuth2AuthenticationSuccessHandlerTest {
 
     @Test
     void redirectsToLoginOnFailure() throws Exception {
+	authorizedClientServiceProvider =
+        new DefaultListableBeanFactory().getBeanProvider(OAuth2AuthorizedClientService.class);
         OAuth2AuthenticationSuccessHandler handler =
-                new OAuth2AuthenticationSuccessHandler(authService, authorizedClientService);
+                new OAuth2AuthenticationSuccessHandler(authService, authorizedClientServiceProvider);
         ReflectionTestUtils.setField(handler, "frontendUrl", "http://localhost:5173");
 
         OAuth2AuthenticationToken authentication = org.mockito.Mockito.mock(OAuth2AuthenticationToken.class);
