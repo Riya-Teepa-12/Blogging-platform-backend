@@ -21,8 +21,6 @@ class JwtUtilTest {
 	@BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(jwtUtil, "jwtSecret", SECRET);
-        // only if JwtUtil uses @PostConstruct init():
-        // ReflectionTestUtils.invokeMethod(jwtUtil, "init");
     }
 
     @Test
