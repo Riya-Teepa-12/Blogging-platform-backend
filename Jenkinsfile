@@ -27,6 +27,7 @@ pipeline {
         withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
           sh '''
             mvn -B clean verify sonar:sonar \
+	      -DINKWELL_LOG_CONFIG=file:/var/jenkins_home/workspace/inkwell-backend/common-logback-spring.xml \
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.projectKey=$SONAR_PROJECT_KEY \
               -Dsonar.organization=$SONAR_ORG \
