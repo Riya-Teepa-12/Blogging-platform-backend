@@ -361,7 +361,7 @@ public class PostServiceImpl implements PostService {
 
     private String generateUniqueSlug(String title) {
         String base = NON_ALNUM.matcher(title.trim().toLowerCase()).replaceAll("-")
-                .replaceAll("(^-+|-+$)", "");
+                .replaceAll("((^-+)|(-+$))", "");
         if (base.isBlank()) {
             base = "post";
         }

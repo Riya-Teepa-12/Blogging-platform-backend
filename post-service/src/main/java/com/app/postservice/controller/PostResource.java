@@ -30,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class PostResource {
 
     private final PostService postService;
+    private static final String MESSAGE = "message";
 
     @PostMapping
     public PostResponse createPost(
@@ -180,7 +181,7 @@ public class PostResource {
     @PostMapping("/{postId}/views")
     public Map<String, String> incrementViews(@PathVariable Long postId, @RequestParam String sessionId) {
         postService.incrementViews(postId, sessionId);
-        return Map.of("message", "View counted");
+        return Map.of(MESSAGE, "View counted");
     }
 
     @PostMapping("/{postId}/like")
@@ -193,7 +194,7 @@ public class PostResource {
             throw forbidden("You can only like as yourself");
         }
         postService.likePost(postId, userId);
-        return Map.of("message", "Post liked");
+        return Map.of(MESSAGE, "Post liked");
     }
 
     @PostMapping("/{postId}/unlike")
@@ -206,7 +207,7 @@ public class PostResource {
             throw forbidden("You can only unlike as yourself");
         }
         postService.unlikePost(postId, userId);
-        return Map.of("message", "Post unliked");
+        return Map.of(MESSAGE, "Post unliked");
     }
 
     @DeleteMapping("/{postId}")
@@ -216,7 +217,7 @@ public class PostResource {
             @RequestHeader(value = "X-User-Role", required = false) String actorRole) {
         requirePostOwnerOrAdmin(postId, actorId, actorRole);
         postService.deletePost(postId);
-        return Map.of("message", "Post deleted");
+        return Map.of(MESSAGE, "Post deleted");
     }
 
     @GetMapping("/count")

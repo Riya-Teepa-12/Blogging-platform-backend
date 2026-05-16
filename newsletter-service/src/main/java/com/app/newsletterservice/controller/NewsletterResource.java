@@ -51,7 +51,7 @@ public class NewsletterResource {
         try {
             return ResponseEntity.ok(newsletterService.getSubscriberByEmail(actorEmail));
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.ok().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 

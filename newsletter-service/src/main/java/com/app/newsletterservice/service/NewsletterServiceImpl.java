@@ -45,6 +45,7 @@ import lombok.RequiredArgsConstructor;
 public class NewsletterServiceImpl implements NewsletterService {
 
     private static final Logger log = LoggerFactory.getLogger(NewsletterServiceImpl.class);
+    private static final String SUBSCRIBER_NOT_FOUND = "Subscriber not found";
 
     private final SubscriberRepository subscriberRepository;
     private final JavaMailSender mailSender;
@@ -157,7 +158,7 @@ public class NewsletterServiceImpl implements NewsletterService {
     @Override
     public SubscriberResponse getSubscriberByEmail(String email) {
         Subscriber subscriber = subscriberRepository.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new IllegalArgumentException("Subscriber not found"));
+                .orElseThrow(() -> new IllegalArgumentException(SUBSCRIBER_NOT_FOUND));
         return toResponse(subscriber);
     }
 
@@ -231,7 +232,7 @@ public class NewsletterServiceImpl implements NewsletterService {
     @Transactional
     public SubscriberResponse updatePreferences(UpdatePreferencesRequest request) {
         Subscriber subscriber = subscriberRepository.findByEmail(normalizeEmail(request.getEmail()))
-                .orElseThrow(() -> new IllegalArgumentException("Subscriber not found"));
+                .orElseThrow(() -> new IllegalArgumentException(SUBSCRIBER_NOT_FOUND));
         subscriber.setPreferences(joinPreferences(request.getPreferences()));
         subscriber = subscriberRepository.save(subscriber);
         return toResponse(subscriber);
@@ -248,7 +249,7 @@ public class NewsletterServiceImpl implements NewsletterService {
     @Override
     public DispatchResponse sendWelcomeEmail(String email) {
         Subscriber subscriber = subscriberRepository.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new IllegalArgumentException("Subscriber not found"));
+                .orElseThrow(() -> new IllegalArgumentException(SUBSCRIBER_NOT_FOUND));
         String unsubscribeUrl = buildUnsubscribeUrl(subscriber.getToken());
         sendPlainEmail(
                 subscriber.getEmail(),
