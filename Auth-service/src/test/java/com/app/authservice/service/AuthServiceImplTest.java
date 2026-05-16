@@ -832,6 +832,66 @@ void resetPasswordWithOtpRejectsOAuthAccount() {
             .hasMessageContaining("not allowed for OAuth");
 }
 
+@Test
+void getUserByEmailAndIdReturnProfiles() {
+    User user = User.builder()
+            .userId(55L)
+            .username("u55")
+            .email("u55@example.com")
+            .fullName("U Fifty Five")
+            .role(Role.READER)
+            .provider(AuthProvider.LOCAL)
+            .isActive(true)
+            .build();
+
+    when(userRepository.findByEmail("u55@example.com")).thenReturn(java.util.Optional.of(user));
+    when(userRepository.findByUserId(55L)).thenReturn(java.util.Optional.of(user));
+
+    assertThat(authService.getUserByEmail("u55@example.com").getUserId()).isEqualTo(55L);
+    assertThat(authService.getUserById(55L).getEmail()).isEqualTo("u55@example.com");
+}
+
+@Test
+void becomeAuthorRejectsAdminRole() {
+    User admin = User.builder()
+            .userId(500L)
+            .email("admin2@example.com")
+            .role(Role.ADMIN)
+            .isActive(true)
+            .build();
+    when(userRepository.findByEmail("admin2@example.com")).thenReturn(java.util.Optional.of(admin));
+
+    BecomeAuthorRequest request = new BecomeAuthorRequest();
+    request.setBio("bio");
+    request.setMotivation("motivation");
+    request.setExpertiseCategories(List.of("Java"));
+    request.setWritingSampleUrls(List.of("https://example.com/sample"));
+
+    assertThatThrownBy(() -> authService.becomeAuthor("admin2@example.com", request))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("Admin account already has author capabilities");
+}
+@Test
+void becomeAuthorRejectsPendingRequest() {
+    User reader = User.builder()
+            .userId(501L)
+            .email("reader-pending@example.com")
+            .role(Role.READER)
+            .isActive(true)
+            .build();
+    when(userRepository.findByEmail("reader-pending@example.com")).thenReturn(java.util.Optional.of(reader));
+    when(authorUpgradeRequestRepository.existsByUserIdAndStatus(501L, AuthorUpgradeStatus.PENDING)).thenReturn(true);
+
+    BecomeAuthorRequest request = new BecomeAuthorRequest();
+    request.setBio("bio");
+    request.setMotivation("motivation");
+    request.setExpertiseCategories(List.of("Java"));
+    request.setWritingSampleUrls(List.of("https://example.com/sample"));
+
+    assertThatThrownBy(() -> authService.becomeAuthor("reader-pending@example.com", request))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("pending author request");
+}
 
 
 
