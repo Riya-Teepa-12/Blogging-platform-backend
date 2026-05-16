@@ -17,13 +17,13 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
             scope: openid,profile,email
             redirect-uri: "${OAUTH_REDIRECT_BASE_URL:http://localhost:8080}/auth/login/oauth2/code/{registrationId}"
           github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
+            client-id: ${GITHUB_CLIENT_ID:}
+            client-secret: ${GITHUB_CLIENT_SECRET:}
             scope: read:user,user:email
             redirect-uri: "${OAUTH_REDIRECT_BASE_URL:http://localhost:8080}/auth/login/oauth2/code/{registrationId}"
   datasource:
@@ -100,9 +100,9 @@ inkwell:
     newsletter:
       amount-paise: ${INKWELL_PLAN_NEWSLETTER_AMOUNT_PAISE:9900}
     razorpay:
-      key-id: ${RAZORPAY_KEY_ID}
-      key-secret: ${RAZORPAY_KEY_SECRET}
-      webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+      key-id: ${RAZORPAY_KEY_ID:}
+      key-secret: ${RAZORPAY_KEY_SECRET:}
+      webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
 
 logging:
   config: "${INKWELL_LOG_CONFIG:file:D:/Inkwell/common-logback-spring.xml}"
