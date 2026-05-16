@@ -21,6 +21,26 @@ pipeline {
         checkout scm
       }
     }
+    
+   stage('Verify MySQL Connectivity') {
+      steps {
+          sh '''
+      set +e
+      echo "== DNS/host check =="
+      getent hosts host.docker.internal || true
+      getent hosts mysql || true
+
+      echo "== Port check 3306 =="
+      (echo > /dev/tcp/host.docker.internal/3306) >/dev/null 2>&1 && echo "host.docker.internal:3306 OPEN" || echo "host.docker.internal:3306 CLOSED"
+      (echo > /dev/tcp/mysql/3306) >/dev/null 2>&1 && echo "mysql:3306 OPEN" || echo "mysql:3306 CLOSED"
+
+      echo "== MySQL login check (if client exists) =="
+      mysql --version || true
+      mysql -h host.docker.internal -P 3306 -u"$DB_USER" -p"$DB_PASS" -e "SELECT 1;" || true
+      mysql -h mysql -P 3306 -u"$DB_USER" -p"$DB_PASS" -e "SELECT 1;" || true
+    '''
+  }
+}
 
     stage('Build + Test + SonarCloud') {
       steps {
