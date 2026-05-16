@@ -71,6 +71,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final JavaMailSender mailSender;
     private final ObjectProvider<KafkaTemplate<String, NotificationDispatchEvent>> notificationKafkaTemplateProvider;
+    private static final String USER_NOT_FOUND = "User not found";
+    private static final String AUTHOR_REQUEST = "AUTHOR_REQUEST";
+    private static final String ADMIN_BROADCAST = "ADMIN_BROADCAST";
 
     @Value("${spring.mail.username}")
     private String mailFrom;
@@ -285,6 +288,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout() {
+        throw new UnsupportedOperationException("Logout is handled by JWT token expiration/client-side token disposal.");
     }
 
     @Override
@@ -308,7 +312,7 @@ public class AuthServiceImpl implements AuthService {
         }
         String email = jwtUtil.extractEmail(request.getToken());
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         if (!user.isActive()) {
             throw new IllegalStateException("Account is deactivated");
         }
@@ -318,23 +322,23 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserProfileResponse getUserByEmail(String email) {
         User user = userRepository.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         return toProfile(user);
     }
 
     @Override
     public UserProfileResponse getUserById(Long userId) {
         User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         return toProfile(user);
     }
 
     @Override
     public PublicUserProfileResponse getPublicUserById(Long userId) {
         User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         if (!user.isActive()) {
-            throw new IllegalArgumentException("User not found");
+            throw new IllegalArgumentException(USER_NOT_FOUND);
         }
         if (user.getRole() != Role.AUTHOR && user.getRole() != Role.ADMIN) {
             throw new IllegalArgumentException("Author profile not found");
@@ -346,7 +350,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public UserProfileResponse updateProfile(String currentEmail, ProfileUpdateRequest request) {
         User user = userRepository.findByEmail(normalizeEmail(currentEmail))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         user.setBio(request.getBio());
         user.setAvatarUrl(request.getAvatarUrl() == null ? null : request.getAvatarUrl().trim());
         user = userRepository.save(user);
@@ -357,7 +361,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthorUpgradeRequestResponse becomeAuthor(String currentEmail, BecomeAuthorRequest request) {
         User user = userRepository.findByEmail(normalizeEmail(currentEmail))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         if (!user.isActive()) {
             throw new IllegalStateException("Account is deactivated");
         }
@@ -400,7 +404,7 @@ public class AuthServiceImpl implements AuthService {
 
         recordAuditInternal(
                 "SUBMIT_AUTHOR_REQUEST",
-                "AUTHOR_REQUEST",
+                AUTHOR_REQUEST,
                 authorRequest.getRequestId(),
                 "Submitted author request; userId=" + user.getUserId()
                         + "; categories=" + String.join(", ", categories)
@@ -413,7 +417,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthorUpgradeRequestResponse getMyAuthorUpgradeRequest(String currentEmail) {
         User user = userRepository.findByEmail(normalizeEmail(currentEmail))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         AuthorUpgradeRequest authorRequest = authorUpgradeRequestRepository
                 .findTopByUserIdOrderByCreatedAtDesc(user.getUserId())
                 .orElse(null);
@@ -483,18 +487,18 @@ public class AuthServiceImpl implements AuthService {
 
             recordAuditInternal(
                     "APPROVE_AUTHOR_REQUEST",
-                    "AUTHOR_REQUEST",
+                    AUTHOR_REQUEST,
                     authorRequest.getRequestId(),
                     "Approved by adminUserId=" + admin.getUserId() + "; userId=" + requestUser.getUserId());
 
             sendNotification(
                     requestUser.getUserId(),
                     admin.getUserId(),
-                    "ADMIN_BROADCAST",
+                    ADMIN_BROADCAST,
                     "Author request approved",
                     "Your author request was approved. You can now access the Author Panel.",
                     authorRequest.getRequestId(),
-                    "AUTHOR_REQUEST");
+                    AUTHOR_REQUEST);
         } else {
             authorRequest.setStatus(AuthorUpgradeStatus.REJECTED);
             authorRequest.setDecisionReason(decisionReason);
@@ -502,7 +506,7 @@ public class AuthServiceImpl implements AuthService {
 
             recordAuditInternal(
                     "REJECT_AUTHOR_REQUEST",
-                    "AUTHOR_REQUEST",
+                    AUTHOR_REQUEST,
                     authorRequest.getRequestId(),
                     "Rejected by adminUserId=" + admin.getUserId()
                             + "; userId=" + requestUser.getUserId()
@@ -511,11 +515,11 @@ public class AuthServiceImpl implements AuthService {
             sendNotification(
                     requestUser.getUserId(),
                     admin.getUserId(),
-                    "ADMIN_BROADCAST",
+                    ADMIN_BROADCAST,
                     "Author request rejected",
                     "Your author request was rejected. Reason: " + decisionReason,
                     authorRequest.getRequestId(),
-                    "AUTHOR_REQUEST");
+                    AUTHOR_REQUEST);
         }
 
         return toAuthorUpgradeResponse(authorRequest);
@@ -525,7 +529,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void changePassword(String currentEmail, ChangePasswordRequest request) {
         User user = userRepository.findByEmail(normalizeEmail(currentEmail))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         if (user.getProvider() != AuthProvider.LOCAL) {
             throw new IllegalStateException("Password change not allowed for OAuth account");
         }
@@ -568,7 +572,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void deactivateAccount(String currentEmail) {
         User user = userRepository.findByEmail(normalizeEmail(currentEmail))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         user.setActive(false);
         userRepository.save(user);
     }
@@ -577,7 +581,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public UserProfileResponse updateRole(Long userId, ChangeRoleRequest request) {
         User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         user.setRole(request.getRole());
         user = userRepository.save(user);
         recordAuditInternal(
@@ -592,7 +596,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public UserProfileResponse setUserActive(Long userId, boolean active) {
         User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         user.setActive(active);
         user = userRepository.save(user);
         recordAuditInternal(
@@ -607,7 +611,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void deleteUser(Long userId) {
         User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         userRepository.deleteByUserId(userId);
         recordAuditInternal("DELETE_USER", "USER", userId, "Deleted user " + user.getEmail());
     }
@@ -643,11 +647,11 @@ public class AuthServiceImpl implements AuthService {
             sendNotification(
                     admin.getUserId(),
                     requester.getUserId(),
-                    "ADMIN_BROADCAST",
+                    ADMIN_BROADCAST,
                     title,
                     message,
                     authorRequest.getRequestId(),
-                    "AUTHOR_REQUEST");
+                    AUTHOR_REQUEST);
         }
     }
 

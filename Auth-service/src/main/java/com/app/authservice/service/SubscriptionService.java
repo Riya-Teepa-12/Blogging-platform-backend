@@ -47,6 +47,7 @@ public class SubscriptionService {
     private final UserSubscriptionRepository userSubscriptionRepository;
     private final PaymentOrderRepository paymentOrderRepository;
     private final RestTemplate restTemplate = new RestTemplate();
+    private static final String USER_NOT_FOUND = "User not found";
 
     @Value("${inkwell.billing.enabled:true}")
     private boolean billingEnabled;
@@ -103,20 +104,20 @@ public class SubscriptionService {
 
     public SubscriptionEntitlementResponse getEntitlementsByEmail(String email) {
         User user = userRepository.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         return buildEntitlements(user);
     }
 
     public SubscriptionEntitlementResponse getEntitlementsByUserId(Long userId) {
         User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         return buildEntitlements(user);
     }
 
     @Transactional
     public CreateSubscriptionOrderResponse createOrder(String email, CreateSubscriptionOrderRequest request) {
         User user = userRepository.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         if (user.getRole() == Role.ADMIN) {
             throw new IllegalArgumentException("Admin does not require subscription purchase");
         }
@@ -166,7 +167,7 @@ public class SubscriptionService {
     @Transactional
     public SubscriptionEntitlementResponse verifyOrder(String email, VerifySubscriptionPaymentRequest request) {
         User user = userRepository.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException(USER_NOT_FOUND));
         PaymentOrder order = paymentOrderRepository.findByProviderOrderId(request.getProviderOrderId())
                 .orElseThrow(() -> new IllegalArgumentException("Payment order not found"));
         if (!order.getUserId().equals(user.getUserId())) {
@@ -310,7 +311,12 @@ public class SubscriptionService {
                 "currency", currency,
                 "receipt", receipt);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-        ResponseEntity<Map> response = restTemplate.postForEntity(endpoint, entity, Map.class);
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+        endpoint,
+        HttpMethod.POST,
+        entity,
+        new ParameterizedTypeReference<Map<String, Object>>() {}
+	);
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
             throw new IllegalStateException("Unable to create Razorpay order");
         }
@@ -351,6 +357,9 @@ public class SubscriptionService {
                 return Long.parseLong(String.valueOf(value));
             }
         } catch (Exception ignored) {
+		// Best-effort external call; failures should not break primary flow.
+ 	        return 0L; // or return null / false based on your method contract
+	}
         }
         return 0L;
     }

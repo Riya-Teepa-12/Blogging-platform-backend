@@ -26,7 +26,7 @@ import com.app.authservice.dto.AuthResponse;
 import com.app.authservice.dto.OAuthLoginRequest;
 import com.app.authservice.entity.AuthProvider;
 import com.app.authservice.service.AuthService;
-
+import org.springframework.core.ParameterizedTypeReference;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,7 +35,7 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
-
+    private static final String EMAIL = "email";
     private final AuthService authService;
     private final ObjectProvider<OAuth2AuthorizedClientService> authorizedClientServiceProvider;
 
@@ -50,12 +50,10 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             OAuth2User user = oauthToken.getPrincipal();
             String registrationId = oauthToken.getAuthorizedClientRegistrationId();
 
-            String email = stringValue(user.getAttribute("email"));
+            String email = stringValue(user.getAttribute(EMAIL));
 
-            if (email == null || email.isBlank()) {
-                if ("github".equalsIgnoreCase(registrationId)) {
+            if ((email == null || email.isBlank())&&("github".equalsIgnoreCase(registrationId))) {
                     email = fetchGithubEmail(oauthToken);
-                }
             }
 
             if (email == null || email.isBlank()) {
@@ -175,11 +173,11 @@ OAuth2AuthorizedClient client =
             headers.set("Accept", "application/vnd.github+json");
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            ResponseEntity<List> response = restTemplate.exchange(
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                     "https://api.github.com/user/emails",
                     HttpMethod.GET,
                     entity,
-                    List.class
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );
             List<Map<String, Object>> emails = response.getBody();
             if (emails == null || emails.isEmpty()) {
@@ -188,7 +186,7 @@ OAuth2AuthorizedClient client =
 
             String primary = emails.stream()
                     .filter(email -> Boolean.TRUE.equals(email.get("primary")))
-                    .map(email -> stringValue(email.get("email")))
+                    .map(email -> stringValue(email.get(EMAIL)))
                     .filter(value -> value != null && !value.isBlank())
                     .findFirst()
                     .orElse(null);
@@ -198,7 +196,7 @@ OAuth2AuthorizedClient client =
 
             String verified = emails.stream()
                     .filter(email -> Boolean.TRUE.equals(email.get("verified")))
-                    .map(email -> stringValue(email.get("email")))
+                    .map(email -> stringValue(email.get(EMAIL)))
                     .filter(value -> value != null && !value.isBlank())
                     .findFirst()
                     .orElse(null);
@@ -207,7 +205,7 @@ OAuth2AuthorizedClient client =
             }
 
             return emails.stream()
-                    .map(email -> stringValue(email.get("email")))
+                    .map(email -> stringValue(email.get(EMAIL)))
                     .filter(value -> value != null && !value.isBlank())
                     .findFirst()
                     .orElse(null);

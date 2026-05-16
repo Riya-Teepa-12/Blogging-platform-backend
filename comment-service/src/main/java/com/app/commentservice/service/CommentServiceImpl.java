@@ -42,6 +42,7 @@ public class CommentServiceImpl implements CommentService {
 
     private static final Logger log = LoggerFactory.getLogger(CommentServiceImpl.class);
     private static final Pattern MENTION_PATTERN = Pattern.compile("(?<![\\w.])@([A-Za-z0-9._-]{3,80})");
+    private static final String RELATED_TYPE_COMMENT = "COMMENT";
 
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
@@ -317,22 +318,20 @@ public class CommentServiceImpl implements CommentService {
                     actorName + " replied to your comment",
                     comment.getContent(),
                     comment.getCommentId(),
-                    "COMMENT");
+                    RELATED_TYPE_COMMENT);
             alreadyNotified.add(parentComment.getAuthorId());
         }
 
         Set<String> mentionedUsernames = extractMentions(comment.getContent());
         for (String username : mentionedUsernames) {
             AppUser user = appUserRepository.findByUsernameIgnoreCase(username).orElse(null);
-            if (user == null || !user.isActive()) {
-                continue;
-            }
-            if (user.getUserId() == null || user.getUserId().equals(actorId)) {
-                continue;
-            }
-            if (alreadyNotified.contains(user.getUserId())) {
-                continue;
-            }
+            boolean eligible = user != null
+            && user.isActive()
+            && user.getUserId() != null
+            && !user.getUserId().equals(actorId)
+            && !alreadyNotified.contains(user.getUserId());
+
+	   if(eligible){
             sendNotification(
                     user.getUserId(),
                     actorId,
@@ -340,8 +339,9 @@ public class CommentServiceImpl implements CommentService {
                     actorName + " mentioned you in a comment",
                     comment.getContent(),
                     comment.getCommentId(),
-                    "COMMENT");
+                    RELATED_TYPE_COMMENT);
             alreadyNotified.add(user.getUserId());
+	    }
         }
     }
 
@@ -364,7 +364,7 @@ public class CommentServiceImpl implements CommentService {
                 actorName + " commented on your post",
                 "Post: " + postTitle + " | Comment: " + commentPreview,
                 comment.getCommentId(),
-                "COMMENT");
+                RELATED_TYPE_COMMENT);
         alreadyNotified.add(post.getAuthorId());
     }
 

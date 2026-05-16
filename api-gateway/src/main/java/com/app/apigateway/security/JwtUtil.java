@@ -12,9 +12,9 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtUtil {
 
-    private final String SECRET = "mysecretkeymysecretkeymysecretkeymysecretkey";
+    private final Static String jwtSecret = "mysecretkeymysecretkeymysecretkeymysecretkey";
 
-    private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
+    private final Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
 
     public Claims extractClaims(String token) {
         return Jwts.parserBuilder()

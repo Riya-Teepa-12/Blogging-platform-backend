@@ -10,15 +10,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
+    private static final String MESSAGE = "message";
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(MESSAGE, ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(MESSAGE, ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -27,6 +27,6 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(fieldError -> fieldError.getField() + " " + fieldError.getDefaultMessage())
                 .orElse("Validation failed");
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(MESSAGE, message));
     }
 }

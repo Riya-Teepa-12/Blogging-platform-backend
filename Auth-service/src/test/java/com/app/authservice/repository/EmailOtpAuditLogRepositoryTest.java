@@ -37,7 +37,7 @@ class EmailOtpAuditLogRepositoryTest {
 
     @Test
     void otpAndAuditLogQueriesWork() {
-        EmailOtp otp = emailOtpRepository.saveAndFlush(EmailOtp.builder()
+         emailOtpRepository.saveAndFlush(EmailOtp.builder()
                 .email("user@example.com")
                 .purpose(OtpPurpose.SIGNUP)
                 .otpCode("123456")
@@ -47,7 +47,7 @@ class EmailOtpAuditLogRepositoryTest {
                 .createdAt(LocalDateTime.now())
                 .build());
 
-        AuditLog auditLog = auditLogRepository.saveAndFlush(AuditLog.builder()
+         auditLogRepository.saveAndFlush(AuditLog.builder()
                 .actorUserId(1L)
                 .actorEmail("admin@example.com")
                 .action("DELETE_USER")
