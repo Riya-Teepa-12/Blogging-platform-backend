@@ -359,7 +359,6 @@ public class SubscriptionService {
         } catch (Exception ignored) {
 		// Best-effort external call; failures should not break primary flow.
  	        return 0L; // or return null / false based on your method contract
-	}
         }
         return 0L;
     }
