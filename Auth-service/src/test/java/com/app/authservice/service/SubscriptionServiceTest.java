@@ -316,6 +316,32 @@ class SubscriptionServiceTest {
             throw new IllegalStateException(ex);
         }
     }
+@Test
+void createOrderFailsWhenProviderBodyIsNull() {
+    ReflectionTestUtils.setField(subscriptionService, "billingEnabled", true);
+
+    User author = User.builder()
+            .userId(19L)
+            .username("author2")
+            .email("author2@example.com")
+            .role(Role.AUTHOR)
+            .provider(AuthProvider.LOCAL)
+            .isActive(true)
+            .build();
+    when(userRepository.findByEmail("author2@example.com")).thenReturn(java.util.Optional.of(author));
+
+    when(restTemplate.postForEntity(any(String.class), any(), any(Class.class)))
+            .thenReturn(ResponseEntity.ok().build()); // body = null
+
+    CreateSubscriptionOrderRequest request = new CreateSubscriptionOrderRequest();
+    request.setPlanType(SubscriptionPlanType.AUTHOR_POSTS);
+
+    assertThatThrownBy(() -> subscriptionService.createOrder("author2@example.com", request))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("Unable to create Razorpay order");
+}
+
+
 }
 
 

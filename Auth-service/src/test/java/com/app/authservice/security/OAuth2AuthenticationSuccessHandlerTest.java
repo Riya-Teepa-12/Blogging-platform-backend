@@ -79,4 +79,45 @@ class OAuth2AuthenticationSuccessHandlerTest {
         assertThat(response.getRedirectedUrl()).contains("http://localhost:5173/login");
         assertThat(response.getRedirectedUrl()).contains("oauthError=oauth failed");
     }
+	@Test
+void githubWithoutEmailRedirectsToLogin() throws Exception {
+    authorizedClientServiceProvider =
+            new DefaultListableBeanFactory().getBeanProvider(OAuth2AuthorizedClientService.class);
+    OAuth2AuthenticationSuccessHandler handler =
+            new OAuth2AuthenticationSuccessHandler(authService, authorizedClientServiceProvider);
+    ReflectionTestUtils.setField(handler, "frontendUrl", "http://localhost:5173");
+
+    OAuth2AuthenticationToken authentication = org.mockito.Mockito.mock(OAuth2AuthenticationToken.class);
+    OAuth2User user = org.mockito.Mockito.mock(OAuth2User.class);
+
+    when(authentication.getPrincipal()).thenReturn(user);
+    when(authentication.getAuthorizedClientRegistrationId()).thenReturn("github");
+    when(user.getAttribute("email")).thenReturn(" "); // blank => enters github fetch path
+
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    handler.onAuthenticationSuccess(org.mockito.Mockito.mock(HttpServletRequest.class), response, authentication);
+
+    assertThat(response.getRedirectedUrl()).contains("http://localhost:5173/login");
+    assertThat(response.getRedirectedUrl()).contains("oauthError=Email");
+}
+
+@Test
+void fetchGithubEmailReturnsNullWhenAuthorizedClientMissing() {
+    DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+    beanFactory.registerSingleton("authorizedClientService", authorizedClientService);
+    authorizedClientServiceProvider = beanFactory.getBeanProvider(OAuth2AuthorizedClientService.class);
+
+    OAuth2AuthenticationSuccessHandler handler =
+            new OAuth2AuthenticationSuccessHandler(authService, authorizedClientServiceProvider);
+
+    OAuth2AuthenticationToken oauthToken = org.mockito.Mockito.mock(OAuth2AuthenticationToken.class);
+    when(oauthToken.getAuthorizedClientRegistrationId()).thenReturn("github");
+    when(oauthToken.getName()).thenReturn("u1");
+    when(authorizedClientService.loadAuthorizedClient("github", "u1")).thenReturn(null);
+
+    String email = (String) ReflectionTestUtils.invokeMethod(handler, "fetchGithubEmail", oauthToken);
+    assertThat(email).isNull();
+}
+
+
 }

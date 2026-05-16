@@ -783,4 +783,57 @@ class AuthServiceImplTest {
         request.setToken("refresh-token");
         return request;
     }
+@Test
+void logoutThrowsUnsupportedOperation() {
+    assertThatThrownBy(() -> authService.logout())
+            .isInstanceOf(UnsupportedOperationException.class)
+            .hasMessageContaining("Logout is handled by JWT");
+}
+
+@Test
+void oauthLoginRejectsInactiveExistingUser() {
+    com.app.authservice.dto.OAuthLoginRequest request = new com.app.authservice.dto.OAuthLoginRequest();
+    request.setProvider(AuthProvider.GOOGLE);
+    request.setEmail("inactive-oauth@example.com");
+    request.setUsername("inactiveuser");
+    request.setFullName("Inactive User");
+
+    User existing = User.builder()
+            .userId(300L)
+            .email("inactive-oauth@example.com")
+            .provider(AuthProvider.GOOGLE)
+            .isActive(false)
+            .build();
+
+    when(userRepository.findByEmail("inactive-oauth@example.com")).thenReturn(java.util.Optional.of(existing));
+
+    assertThatThrownBy(() -> authService.oauthLogin(request))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("deactivated");
+}
+
+@Test
+void resetPasswordWithOtpRejectsOAuthAccount() {
+    ResetPasswordWithOtpRequest request = new ResetPasswordWithOtpRequest();
+    request.setEmail("oauth-reset@example.com");
+    request.setOtp("123456");
+    request.setNewPassword("Password@1");
+
+    User oauthUser = User.builder()
+            .email("oauth-reset@example.com")
+            .provider(AuthProvider.GOOGLE)
+            .isActive(true)
+            .build();
+
+    when(userRepository.findByEmail("oauth-reset@example.com")).thenReturn(java.util.Optional.of(oauthUser));
+
+    assertThatThrownBy(() -> authService.resetPasswordWithOtp(request))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("not allowed for OAuth");
+}
+
+
+
+
+
 }
