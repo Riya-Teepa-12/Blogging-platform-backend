@@ -79,7 +79,7 @@ app:
     registration-topic: ${REGISTRATION_TOPIC:notification.send}
 
 auth:
-  internal-api-key: ${AUTH_INTERNAL_API_KEY:${INKWELL_INTERNAL_API_KEY}}
+  internal-api-key: ${AUTH_INTERNAL_API_KEY:${INKWELL_INTERNAL_API_KEY:}}
   otp:
     expire-minutes: ${AUTH_OTP_EXPIRE_MINUTES:10}
     max-attempts: ${AUTH_OTP_MAX_ATTEMPTS:5}

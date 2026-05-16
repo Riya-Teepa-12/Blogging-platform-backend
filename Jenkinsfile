@@ -8,6 +8,12 @@ pipeline {
   environment {
     SONAR_PROJECT_KEY = 'riya-teepa-12_blogging-platform-backend'
     SONAR_ORG = 'riya-teepa-12'
+    DB_HOST = 'inkwell-mysql'
+    DB_PORT = '3306'
+    DB_NAME = 'inkwell_platform'
+    DB_USER = 'root'
+    DB_PASS = 'admin'
+    AUTH_INTERNAL_API_KEY = 'ghfyfr7t8hgv7yh'
   }
 
   options {
@@ -33,6 +39,10 @@ pipeline {
       echo "== Port check 3306 =="
       (echo > /dev/tcp/host.docker.internal/3306) >/dev/null 2>&1 && echo "host.docker.internal:3306 OPEN" || echo "host.docker.internal:3306 CLOSED"
       (echo > /dev/tcp/mysql/3306) >/dev/null 2>&1 && echo "mysql:3306 OPEN" || echo "mysql:3306 CLOSED"
+      (echo > /dev/tcp/inkwell-mysql/3306) >/dev/null 2>&1 && echo "inkwell-mysql:3306 OPEN" || echo "inkwell-mysql:3306 CLOSED"
+      echo "DB_HOST=$DB_HOST"
+      echo "DB_PORT=$DB_PORT"
+      echo "DB_NAME=$DB_NAME"
 
       echo "== MySQL login check (if client exists) =="
       mysql --version || true
@@ -47,6 +57,10 @@ pipeline {
         withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
           sh '''
             mvn -B clean verify sonar:sonar \
+	      -Dspring.profiles.active=test \
+              -DDB_HOST=$DB_HOST -DDB_PORT=$DB_PORT -DDB_NAME=$DB_NAME \
+              -DDB_USER=$DB_USER -DDB_PASS=$DB_PASS \
+              -DAUTH_INTERNAL_API_KEY=$AUTH_INTERNAL_API_KEY \
 	      -DINKWELL_LOG_CONFIG=file:/var/jenkins_home/workspace/inkwell-backend/common-logback-spring.xml \
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.projectKey=$SONAR_PROJECT_KEY \
