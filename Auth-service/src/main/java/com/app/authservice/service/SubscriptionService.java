@@ -11,7 +11,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.http.HttpMethod;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -313,12 +312,8 @@ public class SubscriptionService {
                 "currency", currency,
                 "receipt", receipt);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-        endpoint,
-        HttpMethod.POST,
-        entity,
-        new ParameterizedTypeReference<Map<String, Object>>() {}
-	);
+        ResponseEntity<Map> response = restTemplate.postForEntity(endpoint, entity, Map.class);
+        Map<String, Object> responseBody = response.getBody();
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
             throw new IllegalStateException("Unable to create Razorpay order");
         }
