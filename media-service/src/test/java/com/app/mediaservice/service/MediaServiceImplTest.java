@@ -281,5 +281,30 @@ class MediaServiceImplTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Unable to upload media to S3");
     }
+@Test
+void getS3ClientBuildsAndCachesClientWhenEmpty() {
+    ReflectionTestUtils.setField(mediaService, "s3Region", "ap-south-1");
+    ReflectionTestUtils.setField(mediaService, "s3Endpoint", "");
+    ReflectionTestUtils.setField(mediaService, "s3Client", new java.util.concurrent.atomic.AtomicReference<S3Client>());
+
+    S3Client first = (S3Client) ReflectionTestUtils.invokeMethod(mediaService, "getS3Client");
+    S3Client second = (S3Client) ReflectionTestUtils.invokeMethod(mediaService, "getS3Client");
+
+    assertThat(first).isNotNull();
+    assertThat(second).isSameAs(first); // proves cache path after build
+}
+
+@Test
+void getS3ClientBuildsWithEndpointOverrideBranch() {
+    ReflectionTestUtils.setField(mediaService, "s3Region", "ap-south-1");
+    ReflectionTestUtils.setField(mediaService, "s3Endpoint", "http://minio:9000");
+    ReflectionTestUtils.setField(mediaService, "s3Client", new java.util.concurrent.atomic.AtomicReference<S3Client>());
+
+    S3Client client = (S3Client) ReflectionTestUtils.invokeMethod(mediaService, "getS3Client");
+
+    assertThat(client).isNotNull();
+}
+
+
 }
 
