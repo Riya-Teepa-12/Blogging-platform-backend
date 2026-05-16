@@ -232,7 +232,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private String generateUniqueSlug(String value) {
-        String base = value.trim().toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+|-+$)", "");
+        String base = value.trim().toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("((^-+)|(-+$))", "");
         if (base.isBlank()) {
             base = "taxonomy";
         }

@@ -48,7 +48,9 @@ pipeline {
 
     stage('Build + Test + SonarCloud') {
       steps {
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN'),
+			 string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET')
+	]) {
           sh '''
             mvn -B clean verify sonar:sonar \
 	      -Dspring.profiles.active=test \
@@ -66,6 +68,7 @@ pipeline {
               -Dsonar.projectKey=$SONAR_PROJECT_KEY \
               -Dsonar.organization=$SONAR_ORG \
               -Dsonar.token=$SONAR_TOKEN \
+              -Dsecurity.jwt.secret=$JWT_SECRET \
               -Dsonar.qualitygate.wait=true \
               -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml \
               -Dsonar.coverage.exclusions=**/dto/**,**/entity/**

@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class CategoryResource {
 
     private final CategoryService categoryService;
+    private static final String MESSAGE = "message";
 
     @PostMapping("/categories")
     public CategoryResponse createCategory(
@@ -65,7 +66,7 @@ public class CategoryResource {
             @RequestHeader(value = "X-User-Role", required = false) String actorRole) {
         requireAdmin(actorRole);
         categoryService.deleteCategory(categoryId);
-        return Map.of("message", "Category deleted");
+        return Map.of(MESSAGE, "Category deleted");
     }
 
     @PostMapping("/tags")
@@ -101,7 +102,7 @@ public class CategoryResource {
             @RequestHeader(value = "X-User-Role", required = false) String actorRole) {
         requireAdmin(actorRole);
         categoryService.deleteTag(tagId);
-        return Map.of("message", "Tag deleted");
+        return Map.of(MESSAGE, "Tag deleted");
     }
 
     @PostMapping("/tags/post")
@@ -110,7 +111,7 @@ public class CategoryResource {
             @RequestHeader(value = "X-User-Role", required = false) String actorRole) {
         requireAuthorOrAdmin(actorRole);
         categoryService.addTagToPost(request);
-        return Map.of("message", "Tag added to post");
+        return Map.of(MESSAGE, "Tag added to post");
     }
 
     @DeleteMapping("/tags/post")
@@ -119,7 +120,7 @@ public class CategoryResource {
             @RequestHeader(value = "X-User-Role", required = false) String actorRole) {
         requireAuthorOrAdmin(actorRole);
         categoryService.removeTagFromPost(request);
-        return Map.of("message", "Tag removed from post");
+        return Map.of(MESSAGE, "Tag removed from post");
     }
 
     @GetMapping("/tags/post/{postId}")
@@ -138,7 +139,7 @@ public class CategoryResource {
             @RequestHeader(value = "X-User-Role", required = false) String actorRole) {
         requireAuthorOrAdmin(actorRole);
         categoryService.addCategoryToPost(request);
-        return Map.of("message", "Category added to post");
+        return Map.of(MESSAGE, "Category added to post");
     }
 
     @DeleteMapping("/categories/post")
@@ -147,7 +148,7 @@ public class CategoryResource {
             @RequestHeader(value = "X-User-Role", required = false) String actorRole) {
         requireAuthorOrAdmin(actorRole);
         categoryService.removeCategoryFromPost(request);
-        return Map.of("message", "Category removed from post");
+        return Map.of(MESSAGE, "Category removed from post");
     }
 
     @GetMapping("/categories/post/{postId}")

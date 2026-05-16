@@ -1,6 +1,8 @@
 package com.app.apigateway.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -15,6 +17,13 @@ class JwtUtilTest {
     private static final String SECRET = "mysecretkeymysecretkeymysecretkeymysecretkey";
 
     private final JwtUtil jwtUtil = new JwtUtil();
+
+	@BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(jwtUtil, "jwtSecret", SECRET);
+        // only if JwtUtil uses @PostConstruct init():
+        // ReflectionTestUtils.invokeMethod(jwtUtil, "init");
+    }
 
     @Test
     void extractsClaimsAndValidatesNonExpiredToken() {

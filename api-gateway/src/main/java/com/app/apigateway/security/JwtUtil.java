@@ -4,6 +4,8 @@ import java.security.Key;
 import java.util.Date;
 
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.PostConstruct;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -12,13 +14,21 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtUtil {
 
-    private static final String jwtSecret = "mysecretkeymysecretkeymysecretkeymysecretkey";
+    @Value("${security.jwt.secret}")
+    private String jwtSecret;
 
-    private final Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    private Key key;
+
+   private Key key() {
+    if (key == null) {
+        key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    }
+    return key;
+}
 
     public Claims extractClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(key)
+                .setSigningKey(key())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

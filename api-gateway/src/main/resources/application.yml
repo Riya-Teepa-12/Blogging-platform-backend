@@ -141,6 +141,9 @@ springdoc:
         url: /newsletter/v3/api-docs
       - name: Notification Service
         url: /notifications/v3/api-docs
+security:
+  jwt:
+    secret: ${JWT_SECRET:mysecretkeymysecretkeymysecretkeymysecretkey}
 
 logging:
   config: "${INKWELL_LOG_CONFIG:file:D:/Inkwell/common-logback-spring.xml}"

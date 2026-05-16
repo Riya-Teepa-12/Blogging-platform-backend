@@ -22,6 +22,7 @@ import com.app.mediaservice.dto.MediaResponse;
 import com.app.mediaservice.dto.UpdateAltTextRequest;
 import com.app.mediaservice.entity.Media;
 import com.app.mediaservice.repository.MediaRepository;
+import java.util.concurrent.atomic.AtomicReference;
 
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -228,7 +229,7 @@ class MediaServiceImplTest {
         S3Client s3Client = org.mockito.Mockito.mock(S3Client.class);
         ReflectionTestUtils.setField(mediaService, "mediaStorage", "s3");
         ReflectionTestUtils.setField(mediaService, "s3Bucket", "bucket");
-        ReflectionTestUtils.setField(mediaService, "s3Client", s3Client);
+        ReflectionTestUtils.setField(mediaService, "s3Client", new AtomicReference<>(s3Client));
 
         MockMultipartFile file = new MockMultipartFile("file", "a.png", "image/png", new byte[] {1});
         when(mediaRepository.save(any(Media.class))).thenAnswer(invocation -> {
@@ -270,7 +271,7 @@ class MediaServiceImplTest {
         S3Client s3Client = org.mockito.Mockito.mock(S3Client.class);
         ReflectionTestUtils.setField(mediaService, "mediaStorage", "s3");
         ReflectionTestUtils.setField(mediaService, "s3Bucket", "bucket");
-        ReflectionTestUtils.setField(mediaService, "s3Client", s3Client);
+        ReflectionTestUtils.setField(mediaService, "s3Client", new AtomicReference<>(s3Client));
         org.mockito.Mockito.doThrow(new RuntimeException("boom"))
                 .when(s3Client)
                 .putObject(any(software.amazon.awssdk.services.s3.model.PutObjectRequest.class), any(RequestBody.class));

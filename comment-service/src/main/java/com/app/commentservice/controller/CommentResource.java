@@ -32,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class CommentResource {
 
     private final CommentService commentService;
+    private static final String MESSAGE = "message";
 
     @PostMapping
     public CommentResponse addComment(
@@ -87,7 +88,7 @@ public class CommentResource {
             @RequestHeader(value = "X-User-Role", required = false) String actorRole) {
         Long effectiveActorId = headerActorId != null ? headerActorId : actorId;
         commentService.deleteComment(commentId, effectiveActorId, actorRole);
-        return Map.of("message", "Comment deleted");
+        return Map.of(MESSAGE, "Comment deleted");
     }
 
     @DeleteMapping("/post/{postId}")
@@ -96,7 +97,7 @@ public class CommentResource {
             @RequestHeader(value = "X-Internal-Api-Key", required = false) String internalApiKey) {
         requireInternalApiKey(internalApiKey);
         commentService.deleteCommentsByPost(postId);
-        return Map.of("message", "Comments deleted");
+        return Map.of(MESSAGE, "Comments deleted");
     }
 
     @PutMapping("/{commentId}/approve")
@@ -127,7 +128,7 @@ public class CommentResource {
             throw forbidden("You can like only as yourself");
         }
         commentService.likeComment(commentId, userId);
-        return Map.of("message", "Comment liked");
+        return Map.of(MESSAGE, "Comment liked");
     }
 
     @PutMapping("/{commentId}/unlike")
@@ -140,7 +141,7 @@ public class CommentResource {
             throw forbidden("You can unlike only as yourself");
         }
         commentService.unlikeComment(commentId, userId);
-        return Map.of("message", "Comment unliked");
+        return Map.of(MESSAGE, "Comment unliked");
     }
 
     @GetMapping("/count")

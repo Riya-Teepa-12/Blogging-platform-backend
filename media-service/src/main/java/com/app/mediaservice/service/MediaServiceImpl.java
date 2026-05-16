@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
@@ -60,7 +61,7 @@ public class MediaServiceImpl implements MediaService {
     @Value("${inkwell.media.s3.prefix:media}")
     private String s3Prefix;
 
-    private volatile S3Client s3Client;
+    private final AtomicReference<S3Client> s3Client = new AtomicReference<>();
 
     @Override
     @Transactional
@@ -256,7 +257,10 @@ public class MediaServiceImpl implements MediaService {
                             .bucket(s3Bucket)
                             .key(objectKey)
                             .build());
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+	    // Best-effort delete: do not fail user flow if S3 cleanup fails.
+	    log.debug("Ignoring S3 delete failure for key {}", objectKey, ex);
+
         }
     }
 
@@ -282,26 +286,30 @@ public class MediaServiceImpl implements MediaService {
     }
 
     private S3Client getS3Client() {
-        if (s3Client != null) {
-            return s3Client;
-        }
-        synchronized (this) {
-            if (s3Client != null) {
-                return s3Client;
-            }
-            S3ClientBuilder builder = S3Client.builder()
-                    .region(Region.of(s3Region))
-                    .credentialsProvider(DefaultCredentialsProvider.create());
-
-            if (s3Endpoint != null && !s3Endpoint.isBlank()) {
-                builder = builder
-                        .endpointOverride(URI.create(s3Endpoint))
-                        .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
-            }
-            s3Client = builder.build();
-            return s3Client;
-        }
+       S3Client existing = s3Client.get();
+      if (existing != null) {
+        return existing;
     }
+    synchronized (this) {
+        existing = s3Client.get();
+        if (existing != null) {
+            return existing;
+        }
+	S3ClientBuilder builder = S3Client.builder()
+                .region(Region.of(s3Region))
+                .credentialsProvider(DefaultCredentialsProvider.create());
+
+        if (s3Endpoint != null && !s3Endpoint.isBlank()) {
+            builder = builder
+                    .endpointOverride(URI.create(s3Endpoint))
+                    .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
+        }
+        S3Client created = builder.build();
+        s3Client.set(created);
+        return created;
+    } 
+
+	}
 
     private MediaResponse toResponse(Media media) {
         return MediaResponse.builder()
