@@ -29,28 +29,22 @@ pipeline {
     }
     
    stage('Verify MySQL Connectivity') {
-      steps {
-          sh '''
-      set +e
-      echo "== DNS/host check =="
-      getent hosts host.docker.internal || true
-      getent hosts mysql || true
+     steps {
+ 	 sh '''
+	    set +e
+	    echo "== DNS =="
+	    getent hosts inkwell-mysql || true
 
-      echo "== Port check 3306 =="
-      (echo > /dev/tcp/host.docker.internal/3306) >/dev/null 2>&1 && echo "host.docker.internal:3306 OPEN" || echo "host.docker.internal:3306 CLOSED"
-      (echo > /dev/tcp/mysql/3306) >/dev/null 2>&1 && echo "mysql:3306 OPEN" || echo "mysql:3306 CLOSED"
-      (echo > /dev/tcp/inkwell-mysql/3306) >/dev/null 2>&1 && echo "inkwell-mysql:3306 OPEN" || echo "inkwell-mysql:3306 CLOSED"
-      echo "DB_HOST=$DB_HOST"
-      echo "DB_PORT=$DB_PORT"
-      echo "DB_NAME=$DB_NAME"
+	    echo "== Port 3306 (nc) =="
+	    nc -zv inkwell-mysql 3306 || true
 
-      echo "== MySQL login check (if client exists) =="
-      mysql --version || true
-      mysql -h host.docker.internal -P 3306 -u"$DB_USER" -p"$DB_PASS" -e "SELECT 1;" || true
-      mysql -h mysql -P 3306 -u"$DB_USER" -p"$DB_PASS" -e "SELECT 1;" || true
-    '''
-  }
-}
+	    echo "== Env check =="
+	    echo "DB_HOST=$DB_HOST"
+	    echo "DB_PORT=$DB_PORT"
+	    echo "DB_NAME=$DB_NAME"
+	  '''
+	}
+    }
 
     stage('Build + Test + SonarCloud') {
       steps {
@@ -58,10 +52,16 @@ pipeline {
           sh '''
             mvn -B clean verify sonar:sonar \
 	      -Dspring.profiles.active=test \
-              -DDB_HOST=$DB_HOST -DDB_PORT=$DB_PORT -DDB_NAME=$DB_NAME \
-              -DDB_USER=$DB_USER -DDB_PASS=$DB_PASS \
-              -DAUTH_INTERNAL_API_KEY=$AUTH_INTERNAL_API_KEY \
-	      -DINKWELL_LOG_CONFIG=file:/var/jenkins_home/workspace/inkwell-backend/common-logback-spring.xml \
+  	      -Dspring.datasource.url=jdbc:mysql://inkwell-mysql:3306/inkwell_platform \
+  	      -Dspring.datasource.username=root \
+  	      -Dspring.datasource.password=admin \
+  	      -DAUTH_INTERNAL_API_KEY=ghfyfr7t8hgv7yh \
+  	      -DINKWELL_INTERNAL_API_KEY=ghfyfr7t8hgv7yh \
+	      -Dspring.security.oauth2.client.registration.google.client-id=dummy \
+	      -Dspring.security.oauth2.client.registration.google.client-secret=dummy \
+ 	      -Dspring.security.oauth2.client.registration.github.client-id=dummy \
+	      -Dspring.security.oauth2.client.registration.github.client-secret=dummy \
+              -DINKWELL_LOG_CONFIG=file:/var/jenkins_home/workspace/inkwell-backend/common-logback-spring.xml \
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.projectKey=$SONAR_PROJECT_KEY \
               -Dsonar.organization=$SONAR_ORG \
