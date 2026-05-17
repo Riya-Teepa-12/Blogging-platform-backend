@@ -3,7 +3,21 @@ package com.app.authservice.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+
+import org.mockito.MockedConstruction;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType;
+import org.springframework.web.client.RestTemplate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -118,6 +132,116 @@ void fetchGithubEmailReturnsNullWhenAuthorizedClientMissing() {
     String email = (String) ReflectionTestUtils.invokeMethod(handler, "fetchGithubEmail", oauthToken);
     assertThat(email).isNull();
 }
+@Test
+void fetchGithubEmailCoversPrimaryVerifiedAndFallbackBranches() {
+    DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+    beanFactory.registerSingleton("authorizedClientService", authorizedClientService);
+    authorizedClientServiceProvider = beanFactory.getBeanProvider(OAuth2AuthorizedClientService.class);
 
+    OAuth2AuthenticationSuccessHandler handler =
+            new OAuth2AuthenticationSuccessHandler(authService, authorizedClientServiceProvider);
+
+    OAuth2AuthenticationToken oauthToken = org.mockito.Mockito.mock(OAuth2AuthenticationToken.class);
+    when(oauthToken.getAuthorizedClientRegistrationId()).thenReturn("github");
+    when(oauthToken.getName()).thenReturn("u1");
+
+    OAuth2AccessToken token = new OAuth2AccessToken(
+            TokenType.BEARER,
+            "gh-token",
+            java.time.Instant.now().minusSeconds(10),
+            java.time.Instant.now().plusSeconds(3600));
+
+    OAuth2AuthorizedClient client = org.mockito.Mockito.mock(OAuth2AuthorizedClient.class);
+    when(client.getAccessToken()).thenReturn(token);
+    when(authorizedClientService.loadAuthorizedClient("github", "u1")).thenReturn(client);
+
+    try (MockedConstruction<RestTemplate> mocked = org.mockito.Mockito.mockConstruction(
+            RestTemplate.class,
+            (mock, context) -> {
+                when(mock.exchange(
+                        eq("https://api.github.com/user/emails"),
+                        eq(HttpMethod.GET),
+                        any(HttpEntity.class),
+                        any(ParameterizedTypeReference.class)))
+                        .thenReturn(ResponseEntity.ok(List.of(
+                                Map.of("email", "primary@example.com", "primary", true, "verified", false),
+                                Map.of("email", "verified@example.com", "primary", false, "verified", true),
+                                Map.of("email", "fallback@example.com", "primary", false, "verified", false)
+                        )));
+            })) {
+
+        String email = (String) ReflectionTestUtils.invokeMethod(handler, "fetchGithubEmail", oauthToken);
+        assertThat(email).isEqualTo("primary@example.com");
+    }
+}
+
+@Test
+void fetchGithubEmailReturnsNullForEmptyResponseBody() {
+    DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+    beanFactory.registerSingleton("authorizedClientService", authorizedClientService);
+    authorizedClientServiceProvider = beanFactory.getBeanProvider(OAuth2AuthorizedClientService.class);
+
+    OAuth2AuthenticationSuccessHandler handler =
+            new OAuth2AuthenticationSuccessHandler(authService, authorizedClientServiceProvider);
+
+    OAuth2AuthenticationToken oauthToken = org.mockito.Mockito.mock(OAuth2AuthenticationToken.class);
+    when(oauthToken.getAuthorizedClientRegistrationId()).thenReturn("github");
+    when(oauthToken.getName()).thenReturn("u1");
+
+    OAuth2AccessToken token = new OAuth2AccessToken(
+            TokenType.BEARER, "gh-token", java.time.Instant.now().minusSeconds(10), java.time.Instant.now().plusSeconds(3600));
+    OAuth2AuthorizedClient client = org.mockito.Mockito.mock(OAuth2AuthorizedClient.class);
+    when(client.getAccessToken()).thenReturn(token);
+    when(authorizedClientService.loadAuthorizedClient("github", "u1")).thenReturn(client);
+
+    try (MockedConstruction<RestTemplate> mocked = org.mockito.Mockito.mockConstruction(
+            RestTemplate.class,
+            (mock, context) -> when(mock.exchange(
+                    eq("https://api.github.com/user/emails"),
+                    eq(HttpMethod.GET),
+                    any(HttpEntity.class),
+                    any(ParameterizedTypeReference.class)))
+                    .thenReturn(ResponseEntity.ok(List.of())))) {
+
+        String email = (String) ReflectionTestUtils.invokeMethod(handler, "fetchGithubEmail", oauthToken);
+        assertThat(email).isNull();
+    }
+}
+
+@Test
+void fetchGithubEmailReturnsVerifiedWhenNoPrimary() {
+    DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+    beanFactory.registerSingleton("authorizedClientService", authorizedClientService);
+    authorizedClientServiceProvider = beanFactory.getBeanProvider(OAuth2AuthorizedClientService.class);
+
+    OAuth2AuthenticationSuccessHandler handler =
+            new OAuth2AuthenticationSuccessHandler(authService, authorizedClientServiceProvider);
+
+    OAuth2AuthenticationToken oauthToken = org.mockito.Mockito.mock(OAuth2AuthenticationToken.class);
+    when(oauthToken.getAuthorizedClientRegistrationId()).thenReturn("github");
+    when(oauthToken.getName()).thenReturn("u1");
+
+    OAuth2AccessToken token = new OAuth2AccessToken(
+            TokenType.BEARER, "gh-token", java.time.Instant.now().minusSeconds(10), java.time.Instant.now().plusSeconds(3600));
+    OAuth2AuthorizedClient client = org.mockito.Mockito.mock(OAuth2AuthorizedClient.class);
+    when(client.getAccessToken()).thenReturn(token);
+    when(authorizedClientService.loadAuthorizedClient("github", "u1")).thenReturn(client);
+
+    try (MockedConstruction<RestTemplate> mocked = org.mockito.Mockito.mockConstruction(
+            RestTemplate.class,
+            (mock, context) -> when(mock.exchange(
+                    eq("https://api.github.com/user/emails"),
+                    eq(HttpMethod.GET),
+                    any(HttpEntity.class),
+                    any(ParameterizedTypeReference.class)))
+                    .thenReturn(ResponseEntity.ok(List.of(Map.of("email", "verified@example.com", "primary", false, "verified", true),
+                            Map.of("email", "fallback@example.com", "primary", false, "verified", false)
+                    ))))) {
+
+        String email = (String) ReflectionTestUtils.invokeMethod(handler, "fetchGithubEmail", oauthToken);
+        assertThat(email).isEqualTo("verified@example.com");
+    }
+}
+              
 
 }
