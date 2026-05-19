@@ -45,13 +45,14 @@ public class NewsletterResource {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<SubscriberResponse> getMySubscription(
+    public ResponseEntity<Map<String, Object>> getMySubscription(
             @RequestHeader(value = "X-User-Email", required = false) String actorEmail) {
         requireAuthenticated(actorEmail);
         try {
-            return ResponseEntity.ok(newsletterService.getSubscriberByEmail(actorEmail));
+            SubscriberResponse data = newsletterService.getSubscriberByEmail(actorEmail);
+            return ResponseEntity.ok(Map.of("subscribed", true, "data", data));
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.ok(Map.of("subscribed", false));
         }
     }
 
