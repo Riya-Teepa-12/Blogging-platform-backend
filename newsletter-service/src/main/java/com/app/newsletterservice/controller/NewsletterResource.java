@@ -50,9 +50,9 @@ public class NewsletterResource {
         requireAuthenticated(actorEmail);
         try {
             SubscriberResponse data = newsletterService.getSubscriberByEmail(actorEmail);
-            return ResponseEntity.ok(Map.of("subscribed", true, "data", data));
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of("subscribed", true, "data", data));
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.ok(Map.of("subscribed", false));
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of("subscribed", false));
         }
     }
 

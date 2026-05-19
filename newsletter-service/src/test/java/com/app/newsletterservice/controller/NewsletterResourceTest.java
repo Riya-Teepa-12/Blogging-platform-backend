@@ -14,7 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.app.newsletterservice.dto.DispatchResponse;
 import com.app.newsletterservice.dto.SendNewsletterRequest;
 import com.app.newsletterservice.dto.SendPostNotificationRequest;
@@ -99,7 +98,7 @@ void mySubscriptionHandlesNotFoundAndForbiddenBranches() {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().get("subscribed")).isEqualTo(false);
+    assertThat(response.getBody()).containsEntry("subscribed", false);
 
     SendPostNotificationRequest request = new SendPostNotificationRequest();
     assertThatThrownBy(() -> resource.sendPostNotification(request, "AUTHOR"))
